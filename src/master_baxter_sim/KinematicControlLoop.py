@@ -34,6 +34,8 @@ class KinematicControlLoop:
         
         #Name of the limb self is controlling
         self.limb_name = limb_name
+        rospy.loginfo("Initializing Baxter's %s arm kinematic control", self.limb_name)
+        rospy.loginfo("Arm Controlled in POSITION MODE")
         
         #joint limits (same for both limbs)
         self.joints_min_limit = [-1.69, -1.36, -3.04, 0.05, -3.038, -1.57, -3.05]
@@ -56,26 +58,32 @@ class KinematicControlLoop:
 
         #Publisher for baxter's JointCommand
         self.pub_joint_cmd = rospy.Publisher('/robot/limb/' + self.limb_name 
-            +'/joint_command', JointCommand)
+            +'/joint_command', JointCommand, queue_size=1)
 
-        #Command Message (POSITION_MODE)
+        self.command_msg = JointCommand()
         self.command_msg.mode = JointCommand.POSITION_MODE
+
 
         #Kinematic Controller Parameters
         self.K = 1.0
         self.K_orient = 1.0
-        self.K_jlimit = 1.0
+        self.K_jlimit = 10.0
+
+        #Current and old time parameter
+        self.current_time = -1.0
+        self.old_time = 0.0
 
         #Pose Trajectory Reference
         #Position
             #self.x_ref
         #Velocity
             #self.x_dot_ref
-        #Acceleration
-            #self.x_dot_dot_ref
 
-        #Orientation (hardcoded to be FIXED)
+        #Orientation (hardcoded to be FIXED, so velocity reference is 
+        #always 0)
             #self.R_ref
+
+
         
 
     #Callback Methods
@@ -132,8 +140,28 @@ class KinematicControlLoop:
             [(2.0*qx*qy + 2.0*qz*qw), (1.0 - 2.0*qx*qx - 2.0*qz*qz), (2.0*qy*qz - 2.0*qx*qw)],
             [(2.0*qx*qz - 2.0*qy*qw), (2.0*qy*qz + 2.0*qx*qw), (1.0 - 2.0*qx*qx - 2.0*qy*qy)]])
 
+
+    def init_arm(self):
+        j_a = self.limb.joint_angles()
+        j_a['right_s0']=0.0
+        j_a['right_s1']=-pi/6
+        j_a['right_e0']=pi/2
+        j_a['right_e1']=pi/4
+        j_a['right_w0']=-pi/3
+        j_a['right_w1']=pi/4
+        j_a['right_w2']=0.0
+        self.limb.move_to_joint_positions(j_a)
+        pass
+
     #Execute one control step
     def run(self):
+
+        #get current time
+        if self.current_time == -1.0:
+            self.current_time = rospy.get_time()
+        else:
+            self.old_time = self.current_time
+            self.current_time = rospy.get_time()
 
         #Convert EEF position to numpy vector
         x_current = self.end_effector_position
@@ -254,17 +282,21 @@ class KinematicControlLoop:
         if (numpy.linalg.norm(error_vect) < 0.001):
             theta_dot_vector = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-        #Populate and send JointCommand msg to Baxter
+        ##print "theta_dot_vector_final", theta_dot_vector
+        ##velocities = dict(zip(self.limb.joint_names(), theta_dot_vector))
 
-        #print "theta_dot_vector_final", theta_dot_vector
-        velocities = dict(zip(self.limb.joint_names(), theta_dot_vector))
+        #Integrate q_dot to use it as a q command
+        deltaT = self.current_time - self.old_time
+        pos_cmd_vec = deltaT * theta_dot_vector + self.actual_angles
+        print ("Current position", self.actual_angles)
+        print ("Commanded position", pos_cmd_vec)
 
-        self.command_msg.mode = JointCommand.VELOCITY_MODE
-        self.command_msg.names = velocities.keys()
-        self.command_msg.command = velocities.values()
+        #self.command_msg.mode = JointCommand.VELOCITY_MODE
+        self.command_msg.names = self.limb.joint_names()
+        self.command_msg.command = pos_cmd_vec
 
-        #self.rate.sleep()
-        #self.pub_joint_cmd.publish(self.command_msg)  ##Send the velocity to the internal controller
+        #Publish joint position command
+        #self.pub_joint_cmd.publish(self.command_msg)
 
     
 
