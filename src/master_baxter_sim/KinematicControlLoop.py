@@ -46,6 +46,7 @@ class KinematicControlLoop:
         self.limb.set_command_timeout(120.0)  #Timeout for control
         self.limb.set_joint_position_speed(0.5) #max velocity for position control
 
+        #As of now, there is a warning coming from baxter_kinematics
         self.kin = baxter_kinematics(self.limb_name)
         
         #Subscriber to baxter's EEF pose
@@ -141,15 +142,16 @@ class KinematicControlLoop:
             [(2.0*qx*qz - 2.0*qy*qw), (2.0*qy*qz + 2.0*qx*qw), (1.0 - 2.0*qx*qx - 2.0*qy*qy)]])
 
 
-    def init_arm(self):
+    def init_arm(self, init_q):
         j_a = self.limb.joint_angles()
-        j_a['right_s0']=0.0
-        j_a['right_s1']=-pi/6
-        j_a['right_e0']=pi/2
-        j_a['right_e1']=pi/4
-        j_a['right_w0']=-pi/3
-        j_a['right_w1']=pi/4
-        j_a['right_w2']=0.0
+        # j_a['right_s0']=0.0
+        j_a['right_s0']= init_q[0]
+        j_a['right_s1']= init_q[1]
+        j_a['right_e0']= init_q[2]
+        j_a['right_e1']= init_q[3]
+        j_a['right_w0']= init_q[4]
+        j_a['right_w1']= init_q[5]
+        j_a['right_w2']= init_q[6]
         self.limb.move_to_joint_positions(j_a)
         pass
 
