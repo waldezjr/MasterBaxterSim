@@ -41,6 +41,9 @@
   <build_depend>sensor_msgs</build_depend>
   <build_depend>trajectory_msgs</build_depend>
   <build_depend>xacro</build_depend>
+  <build_depend>pykdl_utils</build_depend>
+
+
   <run_depend>actionlib</run_depend>
   <run_depend>baxter_core_msgs</run_depend>
   <run_depend>baxter_interface</run_depend>
@@ -52,7 +55,7 @@
   <run_depend>sensor_msgs</run_depend>
   <run_depend>trajectory_msgs</run_depend>
   <run_depend>xacro</run_depend>
-
+  <run_depend>pykdl_utils</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

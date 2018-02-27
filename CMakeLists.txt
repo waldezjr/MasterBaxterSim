@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   trajectory_msgs
   xacro
+  urdfdom_py
+  pykdl_utils
 )
 
 ## System dependencies are found with CMake's conventions
