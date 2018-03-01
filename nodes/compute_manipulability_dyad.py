@@ -2,6 +2,7 @@ import numpy as np
 import os
 import csv
 from master_baxter_sim.HHDyad import HumanArm
+from math import pi
 
 
 """ 
@@ -10,7 +11,7 @@ Compute manipulabily values (Yoshikawa,1985), for the human arms in the dyads
 
 joints_folder = '../../PostProcessed_Data/Joint_Angles/Dyad'
 arm_length_folder = '../../PostProcessed_Data/Arm_Length/Dyad'
-folder_out = '../../PostProcessed_Data/ICC/Dyad'
+folder_out = '../../PostProcessed_Data/Manipulability/Dyad'
 urdf_filename = '/home/waldezjr/catkin_ws/src/master_baxter_sim/robots/human_right_arm.xacro'
 
 # joints 
@@ -46,36 +47,44 @@ for dyadName in sorted(os.listdir(joints_folder)):
  			subject = f.split('_')[7].split('.')[0]
  			# print cond + ' ' + trial + ' ' + subject
 
- 			#get arm length, and create robot
+ 			#get arm length(from cm to m), and create robot
 
- 			l1 = arm_lengths[subject][int(dyadName[5])][0]
- 			l2 = arm_lengths[subject][int(dyadName[5])][1]
- 			l3 = arm_lengths[subject][int(dyadName[5])][2]
+ 			l1 = arm_lengths[subject][int(dyadName[5])][0] / 100
+ 			l2 = arm_lengths[subject][int(dyadName[5])][1] / 100
+ 			l3 = arm_lengths[subject][int(dyadName[5])][2] / 100
 
  			# print l1
 
  			arm = HumanArm(l1,l2,l3, urdf_filename,subject)
 
+			fname = dyadName + '_Cond_' + cond +'_Trial_' + trial + '_Manipulability_' + subject + '.csv'   
 
- 			#open file and get joint configurations
- 			with open(joints_folder +'/'+ dyadName +'/'+ f, 'r') as fin:
-				data = np.genfromtxt(fin, delimiter=',', skip_header=11)
+			with open(folder_out + '/' + fname  , 'w') as fp:
+				writer = csv.writer(fp, delimiter=',')
 
- 				#iterate through various joint configurations
-				for i in xrange(1,data.shape[0]):
-					time = float(data[i][0])
-					joints_from_file = data[i][7:]
+	 			#open file and get joint configurations
+	 			with open(joints_folder +'/'+ dyadName +'/'+ f, 'r') as fin:
+					data = np.genfromtxt(fin, delimiter=',', skip_header=11)
 
-					swap_aux = joints_from_file[0]
-					joints_from_file[0] = joints_from_file[1]
-					joints_from_file[1] = swap_aux
+	 				#iterate through various joint configurations
+					for i in xrange(1,data.shape[0]):
+						time = float(data[i][0])
+						joints_from_file = data[i][7:]
 
-					joints = np.asarray(joints_from_file)
- 					#calculate manipulability for a certain joint configuration
- 					arm.get_manipulability(joints)
+						swap_aux = joints_from_file[0]
+						joints_from_file[0] = joints_from_file[1]
+						joints_from_file[1] = swap_aux
+
+						joints = np.asarray(joints_from_file) * pi / 180
+						# print 'joints', joints
+	 					#calculate manipulability for a certain joint configuration
+	 					manip = arm.get_manipulability(joints)
+						writer.writerow([time,manip])
+
+
+
 
  					
- 					#write manipulability to file
 
 
 

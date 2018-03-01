@@ -4,10 +4,12 @@ from pykdl_utils.kdl_kinematics import KDLKinematics
 import numpy as np
 import subprocess
 import sys
+from math import pi
 
-l1 = 0.6 #upper arm length
-l2 = 0.3 #forearm length
-l3 = 0.15 #hand (fist) length
+# 29.6    23.9    7.7
+l1 = 29.6 / 100#upper arm length
+l2 = 23.9 / 100#forearm length
+l3 = 7.7 / 100 #hand (fist) length
 command_str = "rosrun xacro xacro /home/waldezjr/catkin_ws/src/master_baxter_sim/robots/human_right_arm.xacro l1:={0} l2:={1} l3:={2}".format(l1,l2,l3)
 print 'command_str', command_str
 
@@ -28,6 +30,10 @@ pose = kdl_kin.forward(q) # forward kinematics (returns homogeneous 4x4 numpy.ma
 q_ik = kdl_kin.inverse(pose, q+0.3) # inverse kinematics
 if q_ik is not None:
     pose_sol = kdl_kin.forward(q_ik) # should equal pose
+
+
+q = np.array([60.26794860,-16.61584885,47.13758311,58.54795884,131.58005532,26.83723893,0.99987375]) * pi / 180
+
 J = kdl_kin.jacobian(q)
 print 'q:', q
 print 'q_ik:', q_ik
