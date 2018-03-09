@@ -27,6 +27,8 @@ from sensor_msgs.msg import JointState
 from math import (pi, sin, cos, exp)
 from tf.transformations import quaternion_from_euler, quaternion_from_matrix, euler_from_quaternion
 
+from master_baxter_sim.Transformations import Transformations
+
 class KinematicControlLoop:
     def __init__(self,limb_name):
 
@@ -74,18 +76,34 @@ class KinematicControlLoop:
         self.current_time = -1.0
         self.old_time = 0.0
 
+        #Current Pose
+
+        self.end_effector_position = self.limb.endpoint_pose()['position']
+        self.end_effector_orient = self.rotate_list(self.limb.endpoint_pose()['orientation'],1)
+
         #Pose Trajectory Reference
         #Position
-            #self.x_ref
+        self.x_ref = [0.55,0,0.2]
         #Velocity
-            #self.x_dot_ref
+        self.x_dot_ref = [0,0,0] 
 
-        #Orientation (hardcoded to be FIXED, so velocity reference is 
-        #always 0)
-            #self.R_ref
+        #Orientation 
+        T = Transformations()
+
+        Rd = T.Rotx(pi/2)*T.Roty(pi) 
+        Rd = numpy.vstack((Rd, [0, 0, 0])) 
+        Rd = numpy.hstack((Rd, [[0], [0], [0], [1]]))
+        orient = quaternion_from_matrix(Rd)
+        orient = [orient[3], orient[0], orient[1], orient[2]]
+
+        self.orient_ref = [0,1,0,0]
+        print '/n orientation ref:', self.orient_ref
+
 
 
         
+    def rotate_list(self,l, n):
+        return l[n:] + l[:n]    
 
     #Callback Methods
     def joint_states_callback(self, data):
@@ -143,6 +161,12 @@ class KinematicControlLoop:
 
 
     def init_arm(self, init_q):
+        
+        #Enable Baxter
+        rs = baxter_interface.RobotEnable()
+        init_state = rs.state().enabled
+        rs.enable()
+
         j_a = self.limb.joint_angles()
         # j_a['right_s0']=0.0
         j_a['right_s0']= init_q[0]
@@ -153,7 +177,8 @@ class KinematicControlLoop:
         j_a['right_w1']= init_q[5]
         j_a['right_w2']= init_q[6]
         self.limb.move_to_joint_positions(j_a)
-        pass
+
+        print self.limb.endpoint_pose()
 
     #Execute one control step
     def run(self):
@@ -174,7 +199,7 @@ class KinematicControlLoop:
         orient_current = numpy.matrix(orient_current)
         orient_current = numpy.transpose(orient_current)
 
-        self.pos_error = numpy.transpose(numpy.add(self_x_ref,-1.0*x_current))
+        self.pos_error = numpy.transpose(numpy.add(self.x_ref,-1.0*x_current))
 
         x_dot = self.K * self.pos_error
 
@@ -267,7 +292,7 @@ class KinematicControlLoop:
 
 
         theta_dot_vector = numpy.add(theta_dot_vector, u_2_vector)
-        #print "theta_dot_vector depois",theta_dot_vector
+        # print "theta_dot_vector depois",theta_dot_vector
 
 
 
@@ -284,21 +309,32 @@ class KinematicControlLoop:
         if (numpy.linalg.norm(error_vect) < 0.001):
             theta_dot_vector = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-        ##print "theta_dot_vector_final", theta_dot_vector
-        ##velocities = dict(zip(self.limb.joint_names(), theta_dot_vector))
+        print "theta_dot_vector_final", theta_dot_vector
+        #velocities = dict(zip(self.limb.joint_names(), theta_dot_vector))
 
         #Integrate q_dot to use it as a q command
         deltaT = self.current_time - self.old_time
-        pos_cmd_vec = deltaT * theta_dot_vector + self.actual_angles
+        pos_cmd_vec = deltaT * (theta_dot_vector) + numpy.array(self.actual_angles)
         print ("Current position", self.actual_angles)
         print ("Commanded position", pos_cmd_vec)
+        print ('deltaT', deltaT)
 
         #self.command_msg.mode = JointCommand.VELOCITY_MODE
         self.command_msg.names = self.limb.joint_names()
         self.command_msg.command = pos_cmd_vec
 
         #Publish joint position command
-        #self.pub_joint_cmd.publish(self.command_msg)
+        self.pub_joint_cmd.publish(self.command_msg)
+
+        # velocities = dict(zip(self.limb.joint_names(), theta_dot_vector))
+
+        # self.command_msg.mode = JointCommand.VELOCITY_MODE
+        # self.command_msg.names = velocities.keys()
+        # self.command_msg.command = velocities.values()
+
+        # #self.rate.sleep()
+        # self.pub_joint_cmd.publish(self.command_msg)  ##Send the velocity to the internal controller
+
 
     
 
