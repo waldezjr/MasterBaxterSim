@@ -83,7 +83,7 @@ class KinematicControlLoop:
 
         #Pose Trajectory Reference
         #Position
-        self.x_ref = [0.55,0,0.2]
+        self.x_ref = numpy.matrix([0.55,0,0.2])
         #Velocity
         self.x_dot_ref = [0,0,0] 
 
@@ -96,12 +96,11 @@ class KinematicControlLoop:
         orient = quaternion_from_matrix(Rd)
         orient = [orient[3], orient[0], orient[1], orient[2]]
 
-        self.orient_ref = [0,1,0,0]
+        print orient
+
+        self.orient_ref = numpy.matrix([[sin(3.14/2)],[0],[0],[cos(3.14/2)]]) # x y z w
         print '/n orientation ref:', self.orient_ref
-
-
-
-        
+     
     def rotate_list(self,l, n):
         return l[n:] + l[:n]    
 
@@ -178,7 +177,7 @@ class KinematicControlLoop:
         j_a['right_w2']= init_q[6]
         self.limb.move_to_joint_positions(j_a)
 
-        print self.limb.endpoint_pose()
+        # print self.limb.endpoint_pose()
 
     #Execute one control step
     def run(self):
@@ -309,22 +308,22 @@ class KinematicControlLoop:
         if (numpy.linalg.norm(error_vect) < 0.001):
             theta_dot_vector = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-        print "theta_dot_vector_final", theta_dot_vector
+        # print "theta_dot_vector_final", theta_dot_vector
         #velocities = dict(zip(self.limb.joint_names(), theta_dot_vector))
 
         #Integrate q_dot to use it as a q command
         deltaT = self.current_time - self.old_time
         pos_cmd_vec = deltaT * (theta_dot_vector) + numpy.array(self.actual_angles)
-        print ("Current position", self.actual_angles)
-        print ("Commanded position", pos_cmd_vec)
-        print ('deltaT', deltaT)
+        # print ("Current position", self.actual_angles)
+        # print ("Commanded position", pos_cmd_vec)
+        # print ('deltaT', deltaT)
 
         #self.command_msg.mode = JointCommand.VELOCITY_MODE
         self.command_msg.names = self.limb.joint_names()
         self.command_msg.command = pos_cmd_vec
 
         #Publish joint position command
-        self.pub_joint_cmd.publish(self.command_msg)
+        # self.pub_joint_cmd.publish(self.command_msg)
 
         # velocities = dict(zip(self.limb.joint_names(), theta_dot_vector))
 
