@@ -45,7 +45,7 @@ def main():
 
     # right_arm_ctrl.run()
 
-    rate = rospy.Rate(100)
+    rate = rospy.Rate(20)
 
     while not rospy.is_shutdown():
         right_arm_ctrl.run()

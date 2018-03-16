@@ -5,9 +5,6 @@ from baxter_pykdl import baxter_kinematics
 import baxter_interface
 import baxter_external_devices
 
-import time
-import sys
-
 from geometry_msgs.msg import (
     PoseStamped,
     Pose,
@@ -83,7 +80,7 @@ class KinematicControlLoop:
 
         #Pose Trajectory Reference
         #Position
-        self.x_ref = numpy.matrix([0.55,0,0.2])
+        self.x_ref = numpy.matrix([0.4,0,0.2])
         #Velocity
         self.x_dot_ref = [0,0,0] 
 
@@ -185,9 +182,12 @@ class KinematicControlLoop:
         #get current time
         if self.current_time == -1.0:
             self.current_time = rospy.get_time()
+            # self.current_time = time.time()
+            self.old_time = self.current_time
         else:
             self.old_time = self.current_time
             self.current_time = rospy.get_time()
+            # self.current_time = time.time()
 
         #Convert EEF position to numpy vector
         x_current = self.end_effector_position
@@ -237,7 +237,8 @@ class KinematicControlLoop:
         control = numpy.vstack((x_dot, omega))
         #print "control", control
         theta_dot_vector = J_pseudoinv * control
-        #print "theta_dot_vector1",theta_dot_vector
+
+        # theta_dot_vector = [theta_dot_vector[0],theta_dot_vector[1],theta_dot_vector[2],theta_dot_vector[3],theta_dot_vector[4],theta_dot_vector[5],theta_dot_vector[6],]
 
         ######################## Velocity Control Input ##########################################
 
@@ -305,25 +306,30 @@ class KinematicControlLoop:
             elif (theta_dot_vector[k] < -saturation):
                 theta_dot_vector[k] = -saturation
 
-        if (numpy.linalg.norm(error_vect) < 0.001):
-            theta_dot_vector = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        # if (numpy.linalg.norm(error_vect) < 0.001):
+        #     theta_dot_vector = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-        # print "theta_dot_vector_final", theta_dot_vector
+
+
+        print "theta_dot_vector_final", theta_dot_vector
         #velocities = dict(zip(self.limb.joint_names(), theta_dot_vector))
 
-        #Integrate q_dot to use it as a q command
+        type(theta_dot_vector)
+        # Integrate q_dot to use it as a q command
         deltaT = self.current_time - self.old_time
-        pos_cmd_vec = deltaT * (theta_dot_vector) + numpy.array(self.actual_angles)
-        # print ("Current position", self.actual_angles)
-        # print ("Commanded position", pos_cmd_vec)
-        # print ('deltaT', deltaT)
+        pos_cmd_vec = numpy.add(numpy.multiply(deltaT, theta_dot_vector) , numpy.array(self.actual_angles))
+        print ("Current position", self.actual_angles)
+        print ("Commanded position", pos_cmd_vec)
 
-        #self.command_msg.mode = JointCommand.VELOCITY_MODE
-        self.command_msg.names = self.limb.joint_names()
-        self.command_msg.command = pos_cmd_vec
+        joint_positions = dict(zip(self.limb.joint_names(), pos_cmd_vec))
+
+        self.command_msg.mode = JointCommand.POSITION_MODE
+        self.command_msg.names = joint_positions.keys()
+        self.command_msg.command = joint_positions.values()
+        print ('deltaT', deltaT)
 
         #Publish joint position command
-        # self.pub_joint_cmd.publish(self.command_msg)
+        self.pub_joint_cmd.publish(self.command_msg)
 
         # velocities = dict(zip(self.limb.joint_names(), theta_dot_vector))
 
