@@ -87,17 +87,19 @@ class KinematicControlLoop:
         #Orientation 
         T = Transformations()
 
-        Rd = T.Rotx(pi/2)*T.Roty(pi) 
-        Rd = numpy.vstack((Rd, [0, 0, 0])) 
-        Rd = numpy.hstack((Rd, [[0], [0], [0], [1]]))
-        orient = quaternion_from_matrix(Rd)
-        orient = [orient[3], orient[0], orient[1], orient[2]]
+        # Rd = T.Rotx(pi/2)*T.Roty(pi) 
+        # Rd = numpy.vstack((Rd, [0, 0, 0])) 
+        # Rd = numpy.hstack((Rd, [[0], [0], [0], [1]]))
+        # orient = quaternion_from_matrix(Rd)
+        # orient = [orient[3], orient[0], orient[1], orient[2]]
 
-        print orient
+        # print orient
 
         self.orient_ref = numpy.matrix([[sin(3.14/2)],[0],[0],[cos(3.14/2)]]) # x y z w
         print '/n orientation ref:', self.orient_ref
-     
+    
+    # Rotate List 
+    # [a,b,c,d] -----> [b,c,d,a]
     def rotate_list(self,l, n):
         return l[n:] + l[:n]    
 
@@ -182,12 +184,10 @@ class KinematicControlLoop:
         #get current time
         if self.current_time == -1.0:
             self.current_time = rospy.get_time()
-            # self.current_time = time.time()
             self.old_time = self.current_time
         else:
             self.old_time = self.current_time
             self.current_time = rospy.get_time()
-            # self.current_time = time.time()
 
         #Convert EEF position to numpy vector
         x_current = self.end_effector_position
@@ -314,7 +314,6 @@ class KinematicControlLoop:
         print "theta_dot_vector_final", theta_dot_vector
         #velocities = dict(zip(self.limb.joint_names(), theta_dot_vector))
 
-        type(theta_dot_vector)
         # Integrate q_dot to use it as a q command
         deltaT = self.current_time - self.old_time
         pos_cmd_vec = numpy.add(numpy.multiply(deltaT, theta_dot_vector) , numpy.array(self.actual_angles))
