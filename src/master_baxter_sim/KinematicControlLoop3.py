@@ -41,7 +41,7 @@ class KinematicControlLoop3:
         
         #baxter interface
         self.limb = baxter_interface.Limb(self.limb_name)
-        self.limb.set_command_timeout(120.0)  #Timeout for control
+        self.limb.set_command_timeout(0.1)  #Timeout for control
         self.limb.set_joint_position_speed(2) #max velocity for position control
 
         #As of now, there is a warning coming from baxter_kinematics
@@ -76,10 +76,10 @@ class KinematicControlLoop3:
         self.x_dot_ref = np.matrix([0,0,0])
 
         # Orientation
-        self.orient_ref = np.matrix([0,0,0]) 
+        self.orient_ref = np.matrix([0.0,1.0,0.0,0.0]) 
 
         self.kin.print_kdl_chain()
-        # print self.kin.inverse_kinematics([0.5,-0.2,0.3])
+        # print 'ik BAXTER pykdl', self.kin.inverse_kinematics([0.5,-0.2,0.3])
 
         print self.get_angles_right_arm()
 
@@ -148,6 +148,56 @@ class KinematicControlLoop3:
         q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_right_arm()))
         return q
 
+    def calc_orient_error(self,quat_cur,quat_des):
+        
+        quat_des_scalar = float(quat_des[3])
+        quat_des_vec = [float(quat_des[0]), float(quat_des[1]), float(quat_des[2])]
+
+        quat_cur_scalar = float(quat_cur[3])
+        quat_cur_vec = [float(quat_cur[0]), float(quat_cur[1]), float(quat_cur[2])]
+
+        cross_result = np.cross(quat_des_vec, quat_cur_vec)
+        cross_result = np.matrix(cross_result)
+
+        quat_des_vec = np.matrix(quat_des_vec)
+        quat_cur_vec = np.matrix(quat_cur_vec)
+        
+        # orient_error = -q0d * qv + q0 * qvd - cross_result
+        orient_error = -quat_des_scalar * quat_cur_vec + quat_cur_scalar * quat_des_vec - cross_result
+        orient_error = np.transpose(orient_error)
+
+        return orient_error
+
+    def pos_orient_control(self,deltaT):
+
+        x_current, x_orient = self.get_pose_right_arm()
+
+        #Convert EEF position to numpy vector
+        x_current = np.matrix(x_current)
+        x_orient = np.matrix(x_orient)
+
+        self.pos_error = np.transpose(np.add(self.x_ref,-1.0*x_current))
+        # print 'pos_error', self.pos_error
+
+        self.orient_error = self.calc_orient_error(np.transpose(x_orient),np.transpose(self.orient_ref))
+
+        # print 'orientation error \n', self.orient_error        
+
+        J = np.matrix(self.kin.jacobian())
+        Jt = np.transpose(J)
+        I_6 = numpy.matrix(numpy.identity(6), copy=False)
+        
+        # Jacobian Pseudo-Inverse (Moore-Penrose) + DLS
+        manip = numpy.linalg.det(J * J_t)
+        error_vect = numpy.vstack((self.pos_error, self.orient_error))
+        print 'error vector'. error_vect
+
+        beta = pow(numpy.linalg.norm(error_vect), 2) / (manip * 300)  #numpy.linalg.norm(pos_error)
+        J_pseudoinv = J_t * numpy.linalg.inv(J * J_t + pow(beta, 2) * I_6)        
+
+
+        # return q
+
     #Execute one control step
     def run(self):
 
@@ -161,6 +211,12 @@ class KinematicControlLoop3:
 
         deltaT = self.current_time - self.old_time
 
+        # Position and orientation control
+
+        # self.pos_orient_control(deltaT)
+
+        # Position control only
+        
         q = self.pos_control(deltaT)
 
         q_list = np.squeeze(np.asarray(q)).tolist()
