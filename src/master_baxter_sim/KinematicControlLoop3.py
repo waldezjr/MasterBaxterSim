@@ -46,14 +46,6 @@ class KinematicControlLoop3:
 
         #As of now, there is a warning coming from baxter_kinematics
         self.kin = baxter_kinematics(self.limb_name)
-        
-        #Subscriber to baxter's EEF pose
-        # rospy.Subscriber('/robot/limb/' + self.limb_name + '/endpoint_state',
-            # EndpointState, self.endeffector_callback)
-
-        #Subscriber for baxter's joints
-        # rospy.Subscriber('/robot/joint_states',JointState,
-            # self.joint_states_callback)
 
         #Publisher for baxter's JointCommand
         self.pub_joint_cmd = rospy.Publisher('/robot/limb/' + self.limb_name 
@@ -75,13 +67,16 @@ class KinematicControlLoop3:
         #Current Pose
 
         self.end_effector_position = self.limb.endpoint_pose()['position']
-        self.end_effector_orient = self.rotate_list(self.limb.endpoint_pose()['orientation'],1)
+        self.end_effector_orient = self.limb.endpoint_pose()['orientation']
 
         #Pose Trajectory Reference
         #Position
         self.x_ref = np.matrix([0.8,0,0.15])
         #Velocity
-        self.x_dot_ref = np.matrix([0,0,0]) 
+        self.x_dot_ref = np.matrix([0,0,0])
+
+        # Orientation
+        self.orient_ref = np.matrix([0,0,0]) 
 
         self.kin.print_kdl_chain()
         # print self.kin.inverse_kinematics([0.5,-0.2,0.3])
@@ -92,44 +87,6 @@ class KinematicControlLoop3:
      
     def rotate_list(self,l, n):
         return l[n:] + l[:n]
-
-    #Callback Methods
-    def joint_states_callback(self, data):
-
-       
-        angles = data.position
-
-        angles_right = angles[9:16]
-        angles_left = angles[2:9]
-
-        #Angles come from 'data' in a different order than the physical one
-        #So it has to be ordered before assigning it to the object
-        
-        if (self.limb_name == "right"):
-            self.actual_angles = [angles_right[2], angles_right[3], angles_right[0],
-                angles_right[1], angles_right[4],
-                angles_right[5], angles_right[6]]
-
-        if (self.limb_name == "left"):
-            self.actual_angles = [angles_left[2], angles_left[3], angles_left[0],
-                angles_left[1], angles_left[4],
-                angles_left[5], angles_left[6]]
-
-    def endeffector_callback(self, data):
-
-        x = data.pose.position.x
-        y = data.pose.position.y
-        z = data.pose.position.z
-
-        a = data.pose.orientation.x
-        b = data.pose.orientation.y
-        c = data.pose.orientation.z
-        d = data.pose.orientation.w
-
-        #Ordering 'data' before assigning it
-        self.end_effector_position = [x, y, z]
-        self.end_effector_orient = [d, a, b, c]
-
 
     def init_arm(self, init_q):
         
@@ -154,8 +111,42 @@ class KinematicControlLoop3:
         q = [q_aux['right_s0'], q_aux['right_s1'], q_aux['right_e0'], q_aux['right_e1'], q_aux['right_w0'], q_aux['right_w1'], q_aux['right_w2']]
         return q
 
-    def get_pos_right_arm(self):
-        return self.limb.endpoint_pose()['position']           
+    def get_pose_right_arm(self):
+        pos = self.limb.endpoint_pose()['position']
+        # pos: x,y,z ---> vec
+        orientation = self.limb.endpoint_pose()['orientation']
+        # orient: x,y,z,w ---> vec,scalar
+        return pos,orientation
+
+    def pos_control(self,deltaT):
+        
+        x_current, x_orient = self.get_pose_right_arm()
+
+        #Convert EEF position to np vector
+        x_current = np.matrix(x_current)
+        x_orient = np.matrix(x_orient)
+        # print 'x_current', x_current
+        # print 'x_orient', x_orient
+
+        self.pos_error = np.transpose(np.add(self.x_ref,-1.0*x_current))
+        # print 'pos_error', self.pos_error        
+
+        J = np.matrix(self.kin.jacobian())
+        # print 'J', J
+
+        Jp = J[0:3,:]
+        print 'Jp', Jp        
+
+        JpInv = np.linalg.pinv(Jp)
+        # print 'JpInv', JpInv    
+
+        q_dot = JpInv * (np.transpose(self.x_dot_ref) + self.K_kin*(self.pos_error))
+        q_dot = q_dot * pi / 180 # convert q_dot to radians/s
+
+        print 'q_dot', q_dot 
+
+        q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_right_arm()))
+        return q
 
     #Execute one control step
     def run(self):
@@ -163,46 +154,14 @@ class KinematicControlLoop3:
         #get current time
         if self.current_time == -1.0:
             self.current_time = rospy.get_time()
-            # self.current_time = time.time()
             self.old_time = self.current_time
         else:
             self.old_time = self.current_time
             self.current_time = rospy.get_time()
-            # self.current_time = time.time()
-
-        #Convert EEF position to np vector
-        # x_current = self.end_effector_position
-        x_current = self.get_pos_right_arm()
-        x_current = np.matrix(x_current)
-
-        # print 'x_current', x_current
-
-        self.pos_error = np.transpose(np.add(self.x_ref,-1.0*x_current))
-
-
-        # print 'pos_error', self.pos_error        
-
-        J = np.matrix(self.kin.jacobian())
-
-        # print 'J', J
-
-        Jp = J[0:3,:]
-        print 'Jp', Jp        
-
-        JpInv = np.linalg.pinv(Jp)
-
-        # print 'JpInv', JpInv        
-        q_dot = JpInv * (np.transpose(self.x_dot_ref) + self.K_kin*(self.pos_error))
-        q_dot = q_dot * pi / 180
-
-        print 'q_dot', q_dot 
 
         deltaT = self.current_time - self.old_time
 
-        # q = deltaT * q_dot + np.transpose(np.matrix(self.actual_angles))
-        q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_right_arm()))
-
-        # print 'q', q
+        q = self.pos_control(deltaT)
 
         q_list = np.squeeze(np.asarray(q)).tolist()
 
