@@ -14,7 +14,7 @@ from baxter_core_msgs.msg import (
 
 from math import (pi, sin, cos, exp)
 
-class KinematicControlLoop3:
+class KinematicControlLoop:
     def __init__(self,limb_name):
 
         #Attributes Initialization
@@ -77,7 +77,7 @@ class KinematicControlLoop3:
         self.kin.print_kdl_chain()
         # print 'ik BAXTER pykdl', self.kin.inverse_kinematics([0.5,-0.2,0.3])
 
-        # print self.get_angles_right_arm()
+        # print self.get_angles_arm()
 
         # REMEMBER TO TEST THIS TO BE SURE PYKDL IS USING DEG INSTEAD OF RAD
         # print self.kin.forward_position_kinematics([4.14,-42.12,-31.31,-24.30,6.25,-54.51,46.99])
@@ -93,21 +93,36 @@ class KinematicControlLoop3:
         rs.enable()
 
         j_a = self.limb.joint_angles()
-        j_a['right_s0']= init_q[0]
-        j_a['right_s1']= init_q[1]
-        j_a['right_e0']= init_q[2]
-        j_a['right_e1']= init_q[3]
-        j_a['right_w0']= init_q[4]
-        j_a['right_w1']= init_q[5]
-        j_a['right_w2']= init_q[6]
+
+        print j_a
+
+        if(self.limb_name == 'right'):
+            j_a['right_s0']= init_q[0]
+            j_a['right_s1']= init_q[1]
+            j_a['right_e0']= init_q[2]
+            j_a['right_e1']= init_q[3]
+            j_a['right_w0']= init_q[4]
+            j_a['right_w1']= init_q[5]
+            j_a['right_w2']= init_q[6]
+        else:
+            j_a['left_s0']= init_q[0]
+            j_a['left_s1']= init_q[1]
+            j_a['left_e0']= init_q[2]
+            j_a['left_e1']= init_q[3]
+            j_a['left_w0']= init_q[4]
+            j_a['left_w1']= init_q[5]
+            j_a['left_w2']= init_q[6]
         self.limb.move_to_joint_positions(j_a)
 
-    def get_angles_right_arm(self):
+    def get_angles_arm(self):
         q_aux = self.limb.joint_angles()
-        q = [q_aux['right_s0'], q_aux['right_s1'], q_aux['right_e0'], q_aux['right_e1'], q_aux['right_w0'], q_aux['right_w1'], q_aux['right_w2']]
+        if self.limb_name == 'right':
+            q = [q_aux['right_s0'], q_aux['right_s1'], q_aux['right_e0'], q_aux['right_e1'], q_aux['right_w0'], q_aux['right_w1'], q_aux['right_w2']]
+        else:
+            q = [q_aux['left_s0'], q_aux['left_s1'], q_aux['left_e0'], q_aux['left_e1'], q_aux['left_w0'], q_aux['left_w1'], q_aux['left_w2']]
         return q
 
-    def get_pose_right_arm(self):
+    def get_pose_arm(self):
         pos = self.limb.endpoint_pose()['position']
         # pos: x,y,z ---> vec
         orientation = self.limb.endpoint_pose()['orientation']
@@ -116,7 +131,7 @@ class KinematicControlLoop3:
 
     def pos_control(self,deltaT):
         
-        x_current, x_orient = self.get_pose_right_arm()
+        x_current, x_orient = self.get_pose_arm()
 
         #Convert EEF position to np vector
         x_current = np.matrix(x_current)
@@ -144,7 +159,7 @@ class KinematicControlLoop3:
 
         # print 'q_dot', q_dot 
 
-        q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_right_arm()))
+        q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_arm()))
         return q
 
     def calc_orient_error(self,quat_cur,quat_des):
@@ -169,7 +184,7 @@ class KinematicControlLoop3:
 
     def pos_orient_control(self,deltaT):
 
-        x_current, x_orient = self.get_pose_right_arm()
+        x_current, x_orient = self.get_pose_arm()
 
         #Convert EEF position to numpy vector
         x_current = np.matrix(x_current)
@@ -184,7 +199,7 @@ class KinematicControlLoop3:
 
         J = np.matrix(self.kin.jacobian())
         J_t = np.transpose(J)
-        I_6 = np.matrix(np.identity(6), copy=False)
+        # I_6 = np.matrix(np.identity(6), copy=False)
         
         # error vector
         error_vect = np.vstack((self.pos_error, self.orient_error))
@@ -208,7 +223,7 @@ class KinematicControlLoop3:
 
         # print 'q_dot', q_dot
 
-        q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_right_arm()))
+        q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_arm()))
         return q
 
     def saturate_q_dot(self,q_dot):
