@@ -5,26 +5,14 @@ import baxter_interface
 import baxter_external_devices
 import scipy.linalg
 
-from geometry_msgs.msg import (
-    PoseStamped,
-    Pose,
-    Point,
-    Quaternion,
-)
-
-from std_msgs.msg import Header
-
 from baxter_core_msgs.msg import (
     JointCommand,
     EndpointState,
 )
 
-from sensor_msgs.msg import JointState
+# from sensor_msgs.msg import JointState
 
 from math import (pi, sin, cos, exp)
-from tf.transformations import quaternion_from_euler, quaternion_from_matrix, euler_from_quaternion
-
-from master_baxter_sim.Transformations import Transformations
 
 class KinematicControlLoop3:
     def __init__(self,limb_name):
@@ -79,12 +67,12 @@ class KinematicControlLoop3:
 
         #Pose Trajectory Reference
         #Position
-        self.x_ref = np.matrix([0.60,-0.20,0.10])
+        # self.x_ref = np.matrix([0.60,-0.20,0.10])
         #Velocity
-        self.x_dot_ref = np.matrix([0,0,0])
+        # self.x_dot_ref = np.matrix([0,0,0])
 
         # Orientation
-        self.orient_ref = np.matrix([0.0,1.0,0.0,0.0]) 
+        # self.orient_ref = np.matrix([0.0,1.0,0.0,0.0]) 
 
         self.kin.print_kdl_chain()
         # print 'ik BAXTER pykdl', self.kin.inverse_kinematics([0.5,-0.2,0.3])
@@ -105,7 +93,6 @@ class KinematicControlLoop3:
         rs.enable()
 
         j_a = self.limb.joint_angles()
-        # j_a['right_s0']=0.0
         j_a['right_s0']= init_q[0]
         j_a['right_s1']= init_q[1]
         j_a['right_e0']= init_q[2]
@@ -138,13 +125,14 @@ class KinematicControlLoop3:
         # print 'x_orient', x_orient
 
         self.pos_error = np.transpose(np.add(self.x_ref,-1.0*x_current))
-        # print 'pos_error', self.pos_error        
+        if self.verbose:
+            print 'pos_error', self.pos_error        
 
         J = np.matrix(self.kin.jacobian())
         # print 'J', J
 
         Jp = J[0:3,:]
-        print 'Jp', Jp        
+        # print 'Jp', Jp        
 
         JpInv = np.linalg.pinv(Jp)
         # print 'JpInv', JpInv    
@@ -154,7 +142,7 @@ class KinematicControlLoop3:
 
         q_dot = self.saturate_q_dot(q_dot)
 
-        print 'q_dot', q_dot 
+        # print 'q_dot', q_dot 
 
         q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_right_arm()))
         return q
@@ -200,7 +188,8 @@ class KinematicControlLoop3:
         
         # error vector
         error_vect = np.vstack((self.pos_error, self.orient_error))
-        print 'error vector \n', error_vect
+        if self.verbose:
+            print 'error vector \n', error_vect
 
         #velocity reference
         vel_ref = np.vstack((np.transpose(self.x_dot_ref),np.matrix([[0],[0],[0]])))
@@ -235,7 +224,9 @@ class KinematicControlLoop3:
         return q_dot
 
     #Execute one control step
-    def run(self):
+    def run(self, x_ref, x_dot_ref, orient_ref=None, verbose = False):
+
+        self.verbose = verbose
 
         #get current time
         if self.current_time == -1.0:
@@ -247,32 +238,26 @@ class KinematicControlLoop3:
 
         deltaT = self.current_time - self.old_time
 
-        # Position and orientation control
+        self.x_ref = x_ref
+        self.x_dot_ref = x_dot_ref
 
-        q = self.pos_orient_control(deltaT)
+        if orient_ref != None:
+            print '\n Controlling EEF position + orientation \n'
+            self.orient_ref = orient_ref
+            q = self.pos_orient_control(deltaT)
 
+        else:
+            print '\n Controlling EEF position \n'
+            q = self.pos_control(deltaT)
+        
+        if self.verbose:
+            print 'Commanded q \n', q_list
+        
         q_list = np.squeeze(np.asarray(q)).tolist()
 
-        # print 'q_list \n', q_list
 
         self.command_msg.names = self.limb.joint_names()
         self.command_msg.command = q_list
 
         #Publish joint position command
         self.pub_joint_cmd.publish(self.command_msg)
-
-        
-
-        # # Position control only
-        
-        # q = self.pos_control(deltaT)
-
-        # q_list = np.squeeze(np.asarray(q)).tolist()
-
-        # print 'q_list', q_list
-
-        # self.command_msg.names = self.limb.joint_names()
-        # self.command_msg.command = q_list
-
-        # #Publish joint position command
-        # self.pub_joint_cmd.publish(self.command_msg)
