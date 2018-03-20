@@ -39,11 +39,13 @@ class KinematicControlLoop3:
         #joint limits (same for both limbs)
         self.joints_min_limit = [-1.69, -1.36, -3.04, 0.05, -3.038, -1.57, -3.05]
         self.joints_max_limit = [1.56, 1.04, 3.04, 2.58, 3.057, 2.09, 3.05]
+
+        self.joint_max_speed = 2.0
         
         #baxter interface
         self.limb = baxter_interface.Limb(self.limb_name)
         self.limb.set_command_timeout(0.1)  #Timeout for control
-        self.limb.set_joint_position_speed(2) #max velocity for position control
+        self.limb.set_joint_position_speed(self.joint_max_speed) #max velocity for position control
 
         #As of now, there is a warning coming from baxter_kinematics
         self.kin = baxter_kinematics(self.limb_name)
@@ -150,6 +152,8 @@ class KinematicControlLoop3:
         q_dot = JpInv * (np.transpose(self.x_dot_ref) + self.K_kin_p*(self.pos_error))
         q_dot = q_dot * pi / 180 # convert q_dot to radians/s
 
+        q_dot = self.saturate_q_dot(q_dot)
+
         print 'q_dot', q_dot 
 
         q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_right_arm()))
@@ -211,10 +215,24 @@ class KinematicControlLoop3:
 
         q_dot = J_reg_p_inv * (self.K_kin * error_vect + vel_ref)
 
+        q_dot = self.saturate_q_dot(q_dot)
+
         # print 'q_dot', q_dot
 
         q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_right_arm()))
         return q
+
+    def saturate_q_dot(self,q_dot):
+        
+        saturation = self.joint_max_speed
+
+        for k in range(len(q_dot)):
+            if (q_dot[k] > saturation):
+                q_dot[k] = saturation
+            elif (q_dot[k] < -saturation):
+                q_dot[k] = -saturation
+
+        return q_dot
 
     #Execute one control step
     def run(self):
