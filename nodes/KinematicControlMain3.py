@@ -20,12 +20,12 @@ def main():
     right_arm_ctrl = KinematicControlLoop3("right")
 
     right_arm_ctrl.init_arm([0.08, -1.0,  1.19, 1.94, -0.67, 1.03,  0.50])
-    right_arm_ctrl.run()   
+    # right_arm_ctrl.run()   
 
     rate = rospy.Rate(20)
 
     while not rospy.is_shutdown():
-        # right_arm_ctrl.run()
+        right_arm_ctrl.run()
         rate.sleep()
 
 if __name__ == '__main__':

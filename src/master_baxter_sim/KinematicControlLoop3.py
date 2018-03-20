@@ -3,6 +3,7 @@ import numpy as np
 from baxter_pykdl import baxter_kinematics
 import baxter_interface
 import baxter_external_devices
+import scipy.linalg
 
 from geometry_msgs.msg import (
     PoseStamped,
@@ -56,9 +57,14 @@ class KinematicControlLoop3:
 
 
         #Kinematic Controller Parameters
-        self.K_kin = 50 * np.eye(3, dtype=float)
+        self.K_kin_p = 50 * np.eye(3, dtype=float)
+        self.K_kin_o = 50 * np.eye(3, dtype=float)
 
-        print self.K_kin
+        self.K_kin = scipy.linalg.block_diag(self.K_kin_p,self.K_kin_o)
+
+        # print self.K_kin_p
+
+        print '\n Kinematic controller gain matrix \n', self.K_kin
 
         #Current and old time parameter
         self.current_time = -1.0
@@ -71,7 +77,7 @@ class KinematicControlLoop3:
 
         #Pose Trajectory Reference
         #Position
-        self.x_ref = np.matrix([0.8,0,0.15])
+        self.x_ref = np.matrix([0.60,-0.20,0.10])
         #Velocity
         self.x_dot_ref = np.matrix([0,0,0])
 
@@ -81,7 +87,7 @@ class KinematicControlLoop3:
         self.kin.print_kdl_chain()
         # print 'ik BAXTER pykdl', self.kin.inverse_kinematics([0.5,-0.2,0.3])
 
-        print self.get_angles_right_arm()
+        # print self.get_angles_right_arm()
 
         # REMEMBER TO TEST THIS TO BE SURE PYKDL IS USING DEG INSTEAD OF RAD
         # print self.kin.forward_position_kinematics([4.14,-42.12,-31.31,-24.30,6.25,-54.51,46.99])
@@ -141,7 +147,7 @@ class KinematicControlLoop3:
         JpInv = np.linalg.pinv(Jp)
         # print 'JpInv', JpInv    
 
-        q_dot = JpInv * (np.transpose(self.x_dot_ref) + self.K_kin*(self.pos_error))
+        q_dot = JpInv * (np.transpose(self.x_dot_ref) + self.K_kin_p*(self.pos_error))
         q_dot = q_dot * pi / 180 # convert q_dot to radians/s
 
         print 'q_dot', q_dot 
@@ -188,16 +194,27 @@ class KinematicControlLoop3:
         J_t = np.transpose(J)
         I_6 = np.matrix(np.identity(6), copy=False)
         
-        # Jacobian Pseudo-Inverse (Moore-Penrose) + DLS
-        manip = np.linalg.det(J * J_t)
+        # error vector
         error_vect = np.vstack((self.pos_error, self.orient_error))
         print 'error vector \n', error_vect
 
-        beta = pow(np.linalg.norm(error_vect), 2) / (manip * 300)  #numpy.linalg.norm(pos_error)
-        J_pseudoinv = J_t * np.linalg.inv(J * J_t + pow(beta, 2) * I_6)        
+        #velocity reference
+        vel_ref = np.vstack((np.transpose(self.x_dot_ref),np.matrix([[0],[0],[0]])))
+        # print '\n vel_ref \n',vel_ref
 
+        # Jacobian Pseudo-Inverse (Moore-Penrose) + DLS
+        # manip = np.linalg.det(J * J_t)
+        # beta = pow(np.linalg.norm(error_vect), 2) / (manip * 300)  #numpy.linalg.norm(pos_error)
+        # J_pseudoinv = J_t * np.linalg.inv(J * J_t + pow(beta, 2) * I_6)        
 
-        # return q
+        J_reg_p_inv = np.linalg.pinv(J)*pi/180
+
+        q_dot = J_reg_p_inv * (self.K_kin * error_vect + vel_ref)
+
+        # print 'q_dot', q_dot
+
+        q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_right_arm()))
+        return q
 
     #Execute one control step
     def run(self):
@@ -214,7 +231,19 @@ class KinematicControlLoop3:
 
         # Position and orientation control
 
-        self.pos_orient_control(deltaT)
+        q = self.pos_orient_control(deltaT)
+
+        q_list = np.squeeze(np.asarray(q)).tolist()
+
+        # print 'q_list \n', q_list
+
+        self.command_msg.names = self.limb.joint_names()
+        self.command_msg.command = q_list
+
+        #Publish joint position command
+        self.pub_joint_cmd.publish(self.command_msg)
+
+        
 
         # # Position control only
         
