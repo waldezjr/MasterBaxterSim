@@ -83,6 +83,7 @@ class KinematicControlLoop3:
 
         print self.get_angles_right_arm()
 
+        # REMEMBER TO TEST THIS TO BE SURE PYKDL IS USING DEG INSTEAD OF RAD
         # print self.kin.forward_position_kinematics([4.14,-42.12,-31.31,-24.30,6.25,-54.51,46.99])
      
     def rotate_list(self,l, n):
@@ -184,16 +185,16 @@ class KinematicControlLoop3:
         # print 'orientation error \n', self.orient_error        
 
         J = np.matrix(self.kin.jacobian())
-        Jt = np.transpose(J)
-        I_6 = numpy.matrix(numpy.identity(6), copy=False)
+        J_t = np.transpose(J)
+        I_6 = np.matrix(np.identity(6), copy=False)
         
         # Jacobian Pseudo-Inverse (Moore-Penrose) + DLS
-        manip = numpy.linalg.det(J * J_t)
-        error_vect = numpy.vstack((self.pos_error, self.orient_error))
-        print 'error vector'. error_vect
+        manip = np.linalg.det(J * J_t)
+        error_vect = np.vstack((self.pos_error, self.orient_error))
+        print 'error vector \n', error_vect
 
-        beta = pow(numpy.linalg.norm(error_vect), 2) / (manip * 300)  #numpy.linalg.norm(pos_error)
-        J_pseudoinv = J_t * numpy.linalg.inv(J * J_t + pow(beta, 2) * I_6)        
+        beta = pow(np.linalg.norm(error_vect), 2) / (manip * 300)  #numpy.linalg.norm(pos_error)
+        J_pseudoinv = J_t * np.linalg.inv(J * J_t + pow(beta, 2) * I_6)        
 
 
         # return q
@@ -213,18 +214,18 @@ class KinematicControlLoop3:
 
         # Position and orientation control
 
-        # self.pos_orient_control(deltaT)
+        self.pos_orient_control(deltaT)
 
-        # Position control only
+        # # Position control only
         
-        q = self.pos_control(deltaT)
+        # q = self.pos_control(deltaT)
 
-        q_list = np.squeeze(np.asarray(q)).tolist()
+        # q_list = np.squeeze(np.asarray(q)).tolist()
 
-        print 'q_list', q_list
+        # print 'q_list', q_list
 
-        self.command_msg.names = self.limb.joint_names()
-        self.command_msg.command = q_list
+        # self.command_msg.names = self.limb.joint_names()
+        # self.command_msg.command = q_list
 
-        #Publish joint position command
-        self.pub_joint_cmd.publish(self.command_msg)
+        # #Publish joint position command
+        # self.pub_joint_cmd.publish(self.command_msg)
