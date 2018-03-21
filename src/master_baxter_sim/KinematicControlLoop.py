@@ -47,8 +47,8 @@ class KinematicControlLoop:
 
 
         #Kinematic Controller Parameters
-        self.K_kin_p = 100 * np.eye(3, dtype=float)
-        self.K_kin_o = 100 * np.eye(3, dtype=float)
+        self.K_kin_p = 120 * np.eye(3, dtype=float)
+        self.K_kin_o = 120 * np.eye(3, dtype=float)
 
         self.K_kin = scipy.linalg.block_diag(self.K_kin_p,self.K_kin_o)
 
