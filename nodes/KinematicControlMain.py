@@ -10,7 +10,7 @@ from master_baxter_sim.Transformations import Transformations
 from math import (pi,sin,cos,exp,tan)
 
 def circular_traj(t,x_c,tSim, mirror=1):
-    
+    # 'mirror' will mirror the trajectory with respect to the x_base axis
     omega = 2*pi/tSim
     r = 0.05 #radius 
     if t<tSim:
@@ -33,12 +33,14 @@ def main():
     right_arm_ctrl = KinematicControlLoop("right")
     left_arm_ctrl = KinematicControlLoop("left")
 
+    # initial arm configurations
     q_untuck_right = [0.08,-1.0,1.19,1.94,-0.67,1.03,0.50]
     q_untuck_left = [-0.08,-1.0,-1.19,1.94,0.67,1.03,-0.50]
 
 
     t = 0
     t_ros_cur = -1.0
+    # center both trajectories
     x_c_right = [0.7,-0.25,0.15]
     x_c_left = [0.7,0.25,0.15]
 
@@ -50,9 +52,11 @@ def main():
     #Orientation : x, y, z, w ---> vec, scalar
     orient_ref = np.matrix([0.0,1.0,0.0,0.0])
 
+    # Initialize arm
     right_arm_ctrl.init_arm(q_untuck_right)
     left_arm_ctrl.init_arm(q_untuck_left)
 
+    # set loop frequency (Hz)
     rate = rospy.Rate(20) 
 
     while not rospy.is_shutdown():
@@ -68,11 +72,11 @@ def main():
         t = t+deltaT
 
         print t
-
+        # get reference trajectories
         x_ref_right,x_ref_dot_right,x_ref_dot_dot_right = circular_traj(t,x_c_right,30,-1)
         x_ref_left,x_ref_dot_left,x_ref_dot_dot_left = circular_traj(t,x_c_left,30)
 
-
+        # step through control for both arms
         right_arm_ctrl.run(x_ref_right,x_ref_dot_right,orient_ref)
         left_arm_ctrl.run(x_ref_left,x_ref_dot_left,orient_ref)
         rate.sleep()
