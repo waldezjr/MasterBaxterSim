@@ -13,14 +13,14 @@ def circular_traj(t,x_c,tSim, mirror=1):
     # 'mirror' will mirror the trajectory with respect to the x_base axis
     omega = 2*pi/tSim
     r = 0.05 #radius 
-    if t<tSim:
-        x_ref = np.matrix([x_c[0]+r*cos(omega*t),x_c[1]+mirror*r*sin(omega*t),x_c[2]])
-        x_ref_dot = np.matrix([-r*omega*sin(omega*t),mirror*r*omega*cos(omega*t),0.0])
-        x_ref_dot_dot = np.matrix([-r*omega*omega*cos(omega*t),-mirror*r*omega*omega*sin(omega*t),0.0])
-    else:
-        x_ref = np.matrix([x_c[0]+r,x_c[1],x_c[2]])
-        x_ref_dot = np.matrix([0.0,0.0,0.0])
-        x_ref_dot_dot = np.matrix([0.0,0.0,0.0])
+    # if t<tSim:
+    x_ref = np.matrix([x_c[0]+r*cos(omega*t),x_c[1]+mirror*r*sin(omega*t),x_c[2]])
+    x_ref_dot = np.matrix([-r*omega*sin(omega*t),mirror*r*omega*cos(omega*t),0.0])
+    x_ref_dot_dot = np.matrix([-r*omega*omega*cos(omega*t),-mirror*r*omega*omega*sin(omega*t),0.0])
+    # else:
+        # x_ref = np.matrix([x_c[0]+r,x_c[1],x_c[2]])
+        # x_ref_dot = np.matrix([0.0,0.0,0.0])
+        # x_ref_dot_dot = np.matrix([0.0,0.0,0.0])
     return x_ref, x_ref_dot,x_ref_dot_dot
 
 def main():
@@ -77,8 +77,8 @@ def main():
         x_ref_left,x_ref_dot_left,x_ref_dot_dot_left = circular_traj(t,x_c_left,30)
 
         # step through control for both arms
-        right_arm_ctrl.run(x_ref_right,x_ref_dot_right,orient_ref)
-        left_arm_ctrl.run(x_ref_left,x_ref_dot_left,orient_ref)
+        right_arm_ctrl.run(x_ref_right,x_ref_dot_right)
+        left_arm_ctrl.run(x_ref_left,x_ref_dot_left)
         rate.sleep()
 
 if __name__ == '__main__':
