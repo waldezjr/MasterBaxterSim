@@ -7,7 +7,10 @@ from tf.transformations import quaternion_from_matrix
 from master_baxter_sim.KinematicControlLoop import KinematicControlLoop
 from baxter_pykdl import baxter_kinematics
 from master_baxter_sim.Transformations import Transformations
-from math import (pi,sin,cos,exp,tan)
+from math import (pi,sin,cos,exp,tan,sqrt)
+import rosbag
+from std_msgs.msg import Float64
+import time
 
 def circular_traj(t,x_c,tSim, mirror=1):
     # 'mirror' will mirror the trajectory with respect to the x_base axis
@@ -23,7 +26,7 @@ def circular_traj(t,x_c,tSim, mirror=1):
         # x_ref_dot_dot = np.matrix([0.0,0.0,0.0])
     return x_ref, x_ref_dot,x_ref_dot_dot
 
-def main():
+def main(bag):
     rospy.init_node('KinematicControlNode')
 
     # Wait for clock time (when simulating in Gazebo)
@@ -59,6 +62,9 @@ def main():
     # set loop frequency (Hz)
     rate = rospy.Rate(20) 
 
+    # setup rosbag to save data
+    bagData = Float64()
+
     while not rospy.is_shutdown():
 
         if t_ros_cur == -1.0:
@@ -79,10 +85,24 @@ def main():
         # step through control for both arms
         right_arm_ctrl.run(x_ref_right,x_ref_dot_right)
         left_arm_ctrl.run(x_ref_left,x_ref_dot_left)
+
+        # save data in bag
+        # try:
+        bagData.data = sqrt((np.transpose(right_arm_ctrl.pos_error)*right_arm_ctrl.pos_error)[0,0])
+        bag.write('rmse_position_right',bagData)
+        bagData.data = sqrt((np.transpose(left_arm_ctrl.pos_error)*left_arm_ctrl.pos_error)[0,0])
+        bag.write('rmse_position_left',bagData)
+
+
         rate.sleep()
 
 if __name__ == '__main__':
     try:
-        main()
+        time_now=time.strftime("%H:%M:%S")
+        date=time.strftime("%d-%m")
+        bag = rosbag.Bag('Kinematic_Control_Bag_'+ date +'_'+ time_now  + '.bag', 'w')
+        main(bag)
     except rospy.ROSInterruptException:
         pass
+    finally:
+        bag.close()

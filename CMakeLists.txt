@@ -18,6 +18,8 @@ find_package(catkin REQUIRED COMPONENTS
   xacro
   urdfdom_py
   pykdl_utils
+  message_generation
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -54,11 +56,9 @@ catkin_python_setup()
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  BaxterArmLog.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -75,10 +75,11 @@ catkin_python_setup()
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   baxter_core_msgs#   control_msgs#   sensor_msgs#   trajectory_msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   std_msgs
+   geometry_msgs#   control_msgs#   sensor_msgs#   trajectory_msgs
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -114,6 +115,7 @@ catkin_package(
 #  LIBRARIES master_baxter_sim
 #  CATKIN_DEPENDS actionlib baxter_core_msgs baxter_interface baxter_pykdl control_msgs cv_bridge dynamic_reconfigure rospy sensor_msgs trajectory_msgs xacro
 #  DEPENDS system_lib
+ CATKIN_DEPENDS message_runtime
 )
 
 ###########
