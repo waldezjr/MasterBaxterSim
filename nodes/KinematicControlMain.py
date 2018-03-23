@@ -5,11 +5,11 @@ import numpy as np
 from tf.transformations import quaternion_from_matrix
 
 from master_baxter_sim.KinematicControlLoop import KinematicControlLoop
-from baxter_pykdl import baxter_kinematics
 from master_baxter_sim.Transformations import Transformations
+from master_baxter_sim.msg import BaxterArmLog
+from baxter_pykdl import baxter_kinematics
 from math import (pi,sin,cos,exp,tan,sqrt)
 import rosbag
-from std_msgs.msg import Float64
 import time
 
 def circular_traj(t,x_c,tSim, mirror=1):
@@ -63,7 +63,7 @@ def main(bag):
     rate = rospy.Rate(20) 
 
     # setup rosbag to save data
-    bagData = Float64()
+    armLog = BaxterArmLog()
 
     while not rospy.is_shutdown():
 
@@ -83,15 +83,25 @@ def main(bag):
         x_ref_left,x_ref_dot_left,x_ref_dot_dot_left = circular_traj(t,x_c_left,30)
 
         # step through control for both arms
-        right_arm_ctrl.run(x_ref_right,x_ref_dot_right)
-        left_arm_ctrl.run(x_ref_left,x_ref_dot_left)
+        right_arm_ctrl.run(x_ref_right,x_ref_dot_right,orient_ref)
+        left_arm_ctrl.run(x_ref_left,x_ref_dot_left,orient_ref)
 
         # save data in bag
         # try:
-        bagData.data = sqrt((np.transpose(right_arm_ctrl.pos_error)*right_arm_ctrl.pos_error)[0,0])
-        bag.write('rmse_position_right',bagData)
-        bagData.data = sqrt((np.transpose(left_arm_ctrl.pos_error)*left_arm_ctrl.pos_error)[0,0])
-        bag.write('rmse_position_left',bagData)
+        pos, ori = right_arm_ctrl.get_pose_arm()
+
+        armLog.robot_error = sqrt((np.transpose(right_arm_ctrl.pos_error)*right_arm_ctrl.pos_error)[0,0])
+        armLog.EEF_pos.x = pos[0]
+        armLog.EEF_pos.y = pos[1]
+        armLog.EEF_pos.z = pos[2]
+        bag.write('right_arm_log',armLog)
+        
+        pos, ori = left_arm_ctrl.get_pose_arm()
+        armLog.robot_error = sqrt((np.transpose(left_arm_ctrl.pos_error)*left_arm_ctrl.pos_error)[0,0])
+        armLog.EEF_pos.x = pos[0]
+        armLog.EEF_pos.y = pos[1]
+        armLog.EEF_pos.z = pos[2]
+        bag.write('left_arm_log',armLog)
 
 
         rate.sleep()
