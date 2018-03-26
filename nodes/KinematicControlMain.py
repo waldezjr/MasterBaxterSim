@@ -52,7 +52,7 @@ def main(bag):
     # x_ref_left = np.matrix([0.65,0.20,0.10])
 
     # x_ref_dot_right = np.matrix([0,0,0])
-    #Orientation : x, y, z, w ---> vec, scalar
+    #Orientation: x, y, z, w ---> vec, scalar
     orient_ref = np.matrix([0.0,1.0,0.0,0.0])
 
     # Initialize arm
