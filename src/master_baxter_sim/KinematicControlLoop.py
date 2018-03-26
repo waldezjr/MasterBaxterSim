@@ -31,7 +31,7 @@ class KinematicControlLoop:
 
         self.joint_max_speed = 2.0
         
-        #baxter interface
+        #baxter interfac
         self.limb = baxter_interface.Limb(self.limb_name)
         self.limb.set_command_timeout(0.1)  #Timeout for control
         self.limb.set_joint_position_speed(self.joint_max_speed) #max velocity for position control
