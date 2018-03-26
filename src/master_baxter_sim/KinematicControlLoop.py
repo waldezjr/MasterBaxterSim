@@ -8,6 +8,7 @@ import scipy.linalg
 from baxter_core_msgs.msg import (
     JointCommand,
     EndpointState,
+    SEAJointState,
 )
 
 # from sensor_msgs.msg import JointState
@@ -42,6 +43,12 @@ class KinematicControlLoop:
         self.pub_joint_cmd = rospy.Publisher('/robot/limb/' + self.limb_name 
             +'/joint_command', JointCommand, queue_size=1)
 
+        #subcriber to get torque measurements
+        # rospy.Subscriber('/robot/limb/' + self.limb_name + '/endpoint_state', EndpointState, self.endeffector_callback)
+        rospy.Subscriber('/robot/limb/' + self.limb_name +'/left/gravity_compensation_torques', SEAJointState, self.force_sensor_callback)
+        # /robot/limb/left/gravity_compensation_torques
+
+
         self.command_msg = JointCommand()
         self.command_msg.mode = JointCommand.POSITION_MODE
 
@@ -65,15 +72,6 @@ class KinematicControlLoop:
         self.end_effector_position = self.limb.endpoint_pose()['position']
         self.end_effector_orient = self.limb.endpoint_pose()['orientation']
 
-        #Pose Trajectory Reference
-        #Position
-        # self.x_ref = np.matrix([0.60,-0.20,0.10])
-        #Velocity
-        # self.x_dot_ref = np.matrix([0,0,0])
-
-        # Orientation
-        # self.orient_ref = np.matrix([0.0,1.0,0.0,0.0]) 
-
         self.kin.print_kdl_chain()
         # print 'ik BAXTER pykdl', self.kin.inverse_kinematics([0.5,-0.2,0.3])
 
@@ -84,6 +82,20 @@ class KinematicControlLoop:
      
     def rotate_list(self,l, n):
         return l[n:] + l[:n]
+
+    def force_sensor_callback(self, data):
+
+        print data.actual_effort
+        measured_torques = np.matrix(data.actual_effort)
+        gravity_torques = np.matrix(data.gravity_model_effort)
+
+        J = np.matrix(self.kin.jacobian())
+        Jp = J[0:3,:]
+        JpInv = np.linalg.pinv(Jp)
+
+        self.external_torques = (measured_torques-gravity_torques)*JpInv*pi/180
+
+        print '\nExternal Torques: \n', self.external_torques
 
     def init_arm(self, init_q):
         
