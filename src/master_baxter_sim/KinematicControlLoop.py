@@ -45,7 +45,7 @@ class KinematicControlLoop:
 
         #subcriber to get torque measurements
         # rospy.Subscriber('/robot/limb/' + self.limb_name + '/endpoint_state', EndpointState, self.endeffector_callback)
-        rospy.Subscriber('/robot/limb/' + self.limb_name +'/left/gravity_compensation_torques', SEAJointState, self.force_sensor_callback)
+        # rospy.Subscriber('/robot/limb/' + self.limb_name +'/gravity_compensation_torques', SEAJointState, self.force_sensor_callback)
         # /robot/limb/left/gravity_compensation_torques
 
 
@@ -85,7 +85,7 @@ class KinematicControlLoop:
 
     def force_sensor_callback(self, data):
 
-        print data.actual_effort
+        # print data.actual_effort
         measured_torques = np.matrix(data.actual_effort)
         gravity_torques = np.matrix(data.gravity_model_effort)
 
@@ -93,9 +93,9 @@ class KinematicControlLoop:
         Jp = J[0:3,:]
         JpInv = np.linalg.pinv(Jp)
 
-        self.external_torques = (measured_torques-gravity_torques)*JpInv*pi/180
+        self.external_forces = (measured_torques-gravity_torques)*JpInv*pi/180
 
-        print '\nExternal Torques: \n', self.external_torques
+        print '\nExternal forces: ', self.external_forces
 
     def init_arm(self, init_q):
         

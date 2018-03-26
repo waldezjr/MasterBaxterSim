@@ -4,6 +4,7 @@ import rospy
 import numpy
 from baxter_pykdl import baxter_kinematics
 import baxter_interface
+from math import pi
 
 from baxter_core_msgs.msg import (
     JointCommand,
@@ -16,19 +17,23 @@ def printCurJointPos(limb):
     print(limb.joint_angles())
     #print(limb.joint_names())
 
-def force_sensor_callback(self, data):
+def force_sensor_callback( data):
 
-    print 'teste!!!'
-    # measured_torques = np.matrix(data.actual_effort)
-    # gravity_torques = np.matrix(data.gravity_model_effort)
 
-    # J = np.matrix(baxter_kinematics('left').jacobian())
+    measured_torques = numpy.matrix(data.actual_effort)
+    gravity_torques = numpy.matrix(data.gravity_model_effort)
+
+    print 'measured torques\n', measured_torques
+    print 'gravity_torques\n', gravity_torques
+    # print 'external_torques\n', measured_torques - gravity_torques
+
+    # J = numpy.matrix(baxter_kinematics('left').jacobian())
     # Jp = J[0:3,:]
-    # JpInv = np.linalg.pinv(Jp)
+    # JpInv = numpy.linalg.pinv(Jp)
 
     # external_torques = (measured_torques-gravity_torques)*JpInv*pi/180
 
-    # print '\nExternal Torques: \n', external_torques
+    # print '\nExternal Forces: \n', external_torques
 
 
 def main():
@@ -36,7 +41,7 @@ def main():
     rospy.init_node('jointPositionPublisherExample', anonymous=True)
     pub_joint_cmd = rospy.Publisher('/robot/limb/left/joint_command', JointCommand, queue_size=10)
 
-    rospy.Subscriber('/robot/limb/' + 'left' +'/left/gravity_compensation_torques', SEAJointState, force_sensor_callback)
+    # rospy.Subscriber('/robot/limb/' + 'left' +'/gravity_compensation_torques', SEAJointState, force_sensor_callback)
 
     limb = baxter_interface.Limb("left")
     limb.set_joint_position_speed(0.5)
