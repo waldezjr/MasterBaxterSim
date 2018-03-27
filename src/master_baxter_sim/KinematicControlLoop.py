@@ -6,7 +6,10 @@ import baxter_external_devices
 import scipy.linalg
 import tf
 import tf2_ros
-from geometry_msgs.msg import WrenchStamped
+from geometry_msgs.msg import (
+    WrenchStamped,
+    Vector3
+)
 
 from baxter_core_msgs.msg import (
     JointCommand,
@@ -49,6 +52,7 @@ class KinematicControlLoop:
         
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
+
         #subcriber to get torque measurements
         # rospy.Subscriber('/robot/limb/' + self.limb_name + '/endpoint_state', EndpointState, self.endeffector_callback)
         rospy.Subscriber('/ft_sensor/' + self.limb_name, WrenchStamped, self.force_sensor_callback)
@@ -85,6 +89,7 @@ class KinematicControlLoop:
 
         # REMEMBER TO TEST THIS TO BE SURE PYKDL IS USING DEG INSTEAD OF RAD
         # print self.kin.forward_position_kinematics([4.14,-42.12,-31.31,-24.30,6.25,-54.51,46.99])
+        self.force_measured = Vector3()
 
     def rotate_list(self,l, n):
         return l[n:] + l[:n]
@@ -92,9 +97,10 @@ class KinematicControlLoop:
     # rotate vector v1 by quaternion q1 
     def qv_mult(self,v1,q1):
         len =sqrt(v1.x**2 + v1.y**2 + v1.z**2 )
-        v1 = tf.transformations.unit_vector(v1)
+        v1 = tf.transformations.unit_vector(np.array([v1.x,v1.y,v1.z]))
         q2 = list(v1)
         q2.append(0.0)
+        q1 = np.array([q1.x,q1.y,q1.z,q1.w])
         v1 = tf.transformations.quaternion_multiply(
             tf.transformations.quaternion_multiply(q1, q2), 
             tf.transformations.quaternion_conjugate(q1)
@@ -105,17 +111,21 @@ class KinematicControlLoop:
     def force_sensor_callback(self, data):
 
         if self.limb == 'left':
-            eef_transformation = self.tfBuffer.lookup_transform('base','left_wrist', rospy.Time())
+            # self.tfBuffer.waitForTransform('base','left_wrist', rospy.Time(0), rospy.Duration(1.0))
+            eef_transformation = self.tfBuffer.lookup_transform('base','left_wrist', rospy.Time(0))
         else:
-            eef_transformation = self.tfBuffer.lookup_transform('base','right_wrist', rospy.Time())
+            # self.tfBuffer.waitForTransform('base','right_wrist', rospy.Time(0), rospy.Duration(1.0))            
+            eef_transformation = self.tfBuffer.lookup_transform('base','right_wrist', rospy.Time(0))
 
         force_measured = data.wrench.force
 
-        print '\nforce at sensor frame', force_measured
+        # print '\nforce at sensor frame', force_measured
 
-        self.force_measured = self.qv_mult(force_measured,eef_transformation.transform.rotation)
+        force_measured = self.qv_mult(force_measured,eef_transformation.transform.rotation)
 
-        print '\nforce at base frame', force_measured
+        self.force_measured = Vector3(force_measured[0],force_measured[1],force_measured[2])
+
+        # print '\nforce at base frame', self.force_measured
         
 
     def init_arm(self, init_q):

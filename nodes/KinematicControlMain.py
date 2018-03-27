@@ -7,6 +7,7 @@ from tf.transformations import quaternion_from_matrix
 from master_baxter_sim.KinematicControlLoop import KinematicControlLoop
 from master_baxter_sim.Transformations import Transformations
 from master_baxter_sim.msg import BaxterArmLog
+
 from baxter_pykdl import baxter_kinematics
 from math import (pi,sin,cos,exp,tan,sqrt)
 import rosbag
@@ -94,6 +95,7 @@ def main(bag):
         armLog.EEF_pos.x = pos[0]
         armLog.EEF_pos.y = pos[1]
         armLog.EEF_pos.z = pos[2]
+        armLog.f_ext = right_arm_ctrl.force_measured
         bag.write('right_arm_log',armLog)
         
         pos, ori = left_arm_ctrl.get_pose_arm()
@@ -101,6 +103,7 @@ def main(bag):
         armLog.EEF_pos.x = pos[0]
         armLog.EEF_pos.y = pos[1]
         armLog.EEF_pos.z = pos[2]
+        armLog.f_ext = left_arm_ctrl.force_measured
         bag.write('left_arm_log',armLog)
 
 
