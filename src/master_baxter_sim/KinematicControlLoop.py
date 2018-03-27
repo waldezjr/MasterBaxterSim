@@ -4,6 +4,9 @@ from baxter_pykdl import baxter_kinematics
 import baxter_interface
 import baxter_external_devices
 import scipy.linalg
+import tf
+import tf2_ros
+from geometry_msgs.msg import WrenchStamped
 
 from baxter_core_msgs.msg import (
     JointCommand,
@@ -13,7 +16,7 @@ from baxter_core_msgs.msg import (
 
 # from sensor_msgs.msg import JointState
 
-from math import (pi, sin, cos, exp)
+from math import (pi, sin, cos, exp,sqrt)
 
 class KinematicControlLoop:
     def __init__(self,limb_name):
@@ -43,9 +46,12 @@ class KinematicControlLoop:
         self.pub_joint_cmd = rospy.Publisher('/robot/limb/' + self.limb_name 
             +'/joint_command', JointCommand, queue_size=1)
 
+        
+        self.tfBuffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.tfBuffer)
         #subcriber to get torque measurements
         # rospy.Subscriber('/robot/limb/' + self.limb_name + '/endpoint_state', EndpointState, self.endeffector_callback)
-        # rospy.Subscriber('/robot/limb/' + self.limb_name +'/gravity_compensation_torques', SEAJointState, self.force_sensor_callback)
+        rospy.Subscriber('/ft_sensor/' + self.limb_name, WrenchStamped, self.force_sensor_callback)
         # /robot/limb/left/gravity_compensation_torques
 
 
@@ -79,23 +85,38 @@ class KinematicControlLoop:
 
         # REMEMBER TO TEST THIS TO BE SURE PYKDL IS USING DEG INSTEAD OF RAD
         # print self.kin.forward_position_kinematics([4.14,-42.12,-31.31,-24.30,6.25,-54.51,46.99])
-     
+
     def rotate_list(self,l, n):
         return l[n:] + l[:n]
 
+    # rotate vector v1 by quaternion q1 
+    def qv_mult(self,v1,q1):
+        len =sqrt(v1.x**2 + v1.y**2 + v1.z**2 )
+        v1 = tf.transformations.unit_vector(v1)
+        q2 = list(v1)
+        q2.append(0.0)
+        v1 = tf.transformations.quaternion_multiply(
+            tf.transformations.quaternion_multiply(q1, q2), 
+            tf.transformations.quaternion_conjugate(q1)
+        )[:3]
+        v1 = v1*len
+        return v1
+
     def force_sensor_callback(self, data):
 
-        # print data.actual_effort
-        measured_torques = np.matrix(data.actual_effort)
-        gravity_torques = np.matrix(data.gravity_model_effort)
+        if self.limb == 'left':
+            eef_transformation = self.tfBuffer.lookup_transform('base','left_wrist', rospy.Time())
+        else:
+            eef_transformation = self.tfBuffer.lookup_transform('base','right_wrist', rospy.Time())
 
-        J = np.matrix(self.kin.jacobian())
-        Jp = J[0:3,:]
-        JpInv = np.linalg.pinv(Jp)
+        force_measured = data.wrench.force
 
-        self.external_forces = (measured_torques-gravity_torques)*JpInv*pi/180
+        print '\nforce at sensor frame', force_measured
 
-        print '\nExternal forces: ', self.external_forces
+        self.force_measured = self.qv_mult(force_measured,eef_transformation.transform.rotation)
+
+        print '\nforce at base frame', force_measured
+        
 
     def init_arm(self, init_q):
         
