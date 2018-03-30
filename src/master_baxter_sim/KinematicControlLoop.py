@@ -170,6 +170,8 @@ class KinematicControlLoop:
 
         q_dot = self.saturate_q_dot(q_dot)
 
+        self.x_dot = Jp * q_dot
+
         # print 'q_dot', q_dot 
 
         q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_arm()))
@@ -233,8 +235,9 @@ class KinematicControlLoop:
         q_dot = J_reg_p_inv * (self.K_kin * error_vect + vel_ref)
 
         q_dot = self.saturate_q_dot(q_dot)
-
         # print 'q_dot', q_dot
+
+        self.x_dot = Jp * q_dot
 
         q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_arm()))
         return q

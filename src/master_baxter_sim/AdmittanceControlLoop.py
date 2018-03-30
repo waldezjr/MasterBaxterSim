@@ -49,6 +49,13 @@ class AdmittanceControlLoop:
         self.D_d = 120 * np.eye(3, dtype=float)
         self.K_d = 120 * np.eye(3, dtype=float)
 
+        # Human stiffness max
+        self.K_h0 = 2000 * np.eye(3, dtype=float)
+
+        #Max and min values for ICC simulation
+        self.icc_MAX = 0.5
+        self.icc_min = 0.05
+
         #Current and old time parameter
         self.current_time = -1.0
         self.old_time = 0.0
@@ -59,6 +66,11 @@ class AdmittanceControlLoop:
         self.end_effector_orient = self.limb.endpoint_pose()['orientation']
 
         self.force_measured = Vector3()
+
+        # initialize kinematic reference variables
+        self.x_ref_dot = np.transpose(np.matrix([0.0,0.0]))
+        x0 = self.get_pose_arm()
+        self.x_ref = np.transpose(np.matrix([x0[0],x0[1],x0[2]]))
 
     def force_sensor_callback(self, data):
 
@@ -87,50 +99,36 @@ class AdmittanceControlLoop:
         # orient: x,y,z,w ---> vec,scalar
         return pos,orientation
 
-    def admittance(self,deltaT, e_r,e_r_dot,e_r_dot_dot,e_h):
+    def admittance(self, deltaT, x_r_dot_dot, e_r, e_r_dot, Fh):
         
-        x_current, x_orient = self.get_pose_arm()
 
         # xRef_dot_dot = xRDotDot + inv(Md)*( Fh -D*(xEDot - xRDot ) - Kd*(xE - xR) );
         # %integrate xRef_dot_dot, and xRef_dot
         # xRef_dot = Ts * xRef_dot_dot + xRef_dot;
         # xRef = Ts*xRef_dot+ xRef;
 
-        #Convert EEF position to np vector
-        x_current = np.matrix(x_current)
-        x_orient = np.matrix(x_orient)
-        # print 'x_current', x_current
-        # print 'x_orient', x_orient
+        # get ref acceleration
+        self.x_ref_dot_dot = x_r_dot_dot + np.inv(self.Lambda_d)*(Fh - self.D_d*e_r_dot - self.K_d *e_r)
+        # integrate to get ref velocity
+        self.x_ref_dot = deltaT * self.x_ref_dot_dot + self.x_ref_dot
+        # integrate to get ref position
+        self.x_ref = deltaT * self.x_ref_dot + self.x_ref
 
-        self.robot_error = np.transpose(np.add(self.x_ref,-1.0*x_current))
-        if self.verbose:
-            print 'pos_error', self.pos_error        
+    def calc_alpha(self,e_h):
+        # Estimate ICC with sigmoid
+        # sigmoid =(iccMax-iccMin) * 1/(1+exp(-(600*norm(xR-xH)-6))) + iccMin;
 
-        J = np.matrix(self.kin.jacobian())
-        # print 'J', J
+        # calculate norm(e_h)
+        norm_e_h = sqrt((np.transpose(e_h)*e_h)[0,0])
+        icc = (self.icc_MAX - self.icc_min)*1/(1+exp(-(600*norm_e_h-6))) + self.icc_min
 
-        Jp = J[0:3,:]
-        # print 'Jp', Jp        
-
-        JpInv = np.linalg.pinv(Jp)
-        # print 'JpInv', JpInv    
-
-        q_dot = JpInv * (np.transpose(self.x_dot_ref) + self.K_kin_p*(self.pos_error))
-        q_dot = q_dot * pi / 180 # convert q_dot to radians/s
-
-        q_dot = self.saturate_q_dot(q_dot)
-
-        # print 'q_dot', q_dot 
-
-        q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_arm()))
-        return q
+        self.alpha = (icc - self.icc_min) / (self.icc_MAX - self.icc_min);
 
 
 
     #Execute one control step
-    def run(self, x_ref, x_dot_ref, orient_ref=None, verbose = False):
+    def run(self, x_r, x_r_dot,x_r_dot_dot,x_current_dot,x_h):
 
-        self.verbose = verbose
 
         #get current time
         if self.current_time == -1.0:
@@ -140,28 +138,23 @@ class AdmittanceControlLoop:
             self.old_time = self.current_time
             self.current_time = rospy.get_time()
 
+        x_current, x_orient = self.get_pose_arm()
+        #Convert EEF position to np vector
+        x_current = np.matrix(x_current)
+        x_orient = np.matrix(x_orient)
+
+        self.robot_error = np.transpose(np.add(x_current,-1.0*x_r))
+        robot_error_dot = np.transpose(np.add(x_current_dot,-1.0*x_r_dot))
+
+        self.human_error = np.transpose(np.add(x_current,-1.0*x_h))
+
         deltaT = self.current_time - self.old_time
 
-        self.x_ref = x_ref
-        self.x_dot_ref = x_dot_ref
+        # Ideally, we should obtain the external force from a F/T sensor or estimate it from the joint torques
+        # However, for simulation purposes we use a virtual human force modelled as a spring
 
-        if orient_ref != None:
-            print '\n Controlling EEF position + orientation \n'
-            self.orient_ref = orient_ref
-            q = self.pos_orient_control(deltaT)
+        self.calc_alpha(self.human_error)
 
-        else:
-            print '\n Controlling EEF position \n'
-            q = self.pos_control(deltaT)
-        
-        if self.verbose:
-            print 'Commanded q \n', q_list
-        
-        q_list = np.squeeze(np.asarray(q)).tolist()
+        F_h = self.K_h0 * self.human_error
 
-
-        self.command_msg.names = self.limb.joint_names()
-        self.command_msg.command = q_list
-
-        #Publish joint position command
-        self.pub_joint_cmd.publish(self.command_msg)
+        self.admittance(deltaT,x_r_dot_dot,self.robot_error,self.robot_error_dot,F_h)
