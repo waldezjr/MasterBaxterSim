@@ -5,6 +5,7 @@ import numpy as np
 from tf.transformations import quaternion_from_matrix
 
 from master_baxter_sim.KinematicControlLoop import KinematicControlLoop
+from master_baxter_sim.AdmittanceControlLoop import AdmittanceControlLoop
 from master_baxter_sim.Transformations import Transformations
 from master_baxter_sim.msg import BaxterArmLog
 
@@ -58,12 +59,11 @@ def main(bag):
     # Wait for clock time (when simulating in Gazebo)
     while rospy.get_time() == 0 :
         pass
-# 
-    right_arm_ctrl = KinematicControlLoop("right")
+
+    # right_arm_ctrl = KinematicControlLoop("right")
     left_arm_ctrl = KinematicControlLoop("left")
 
     # initial arm configurations
-    q_untuck_right = [0.08,-1.0,1.19,1.94,-0.67,1.03,0.50]
     q_untuck_left = [-0.08,-1.0,-1.19,1.94,0.67,1.03,-0.50]
 
     q_initial = [-0.2662, -0.7219, -0.9775, 1.2290, 0.6837, 1.3972, -0.3970]
@@ -72,19 +72,13 @@ def main(bag):
     t = 0
     t_ros_cur = -1.0
     # center both trajectories
-    # x_c_right = [0.7,-0.25,0.15]
     x_c_left = [0.7,0.25,0.15]
-
-    #Position : x, y, z ---> vec
-    # x_ref_right = np.matrix([0.65,-0.20,0.10])
-    # x_ref_left = np.matrix([0.65,0.20,0.10])
 
     # x_ref_dot_right = np.matrix([0,0,0])
     #Orientation: x, y, z, w ---> vec, scalar
     orient_ref = np.matrix([0.0,1.0,0.0,0.0])
 
     # Initialize arm
-    # right_arm_ctrl.init_arm(q_untuck_right)
     left_arm_ctrl.init_arm(q_initial)
 
     # set loop frequency (Hz)
@@ -116,15 +110,6 @@ def main(bag):
         left_arm_ctrl.run(x_ref_left,x_ref_dot_left,orient_ref)
 
         # save data in bag
-        # try:
-        # pos, ori = right_arm_ctrl.get_pose_arm()
-
-        # armLog.robot_error = sqrt((np.transpose(right_arm_ctrl.pos_error)*right_arm_ctrl.pos_error)[0,0])
-        # armLog.EEF_pos.x = pos[0]
-        # armLog.EEF_pos.y = pos[1]
-        # armLog.EEF_pos.z = pos[2]
-        # armLog.f_ext = right_arm_ctrl.force_measured
-        # bag.write('right_arm_log',armLog)
         
         pos, ori = left_arm_ctrl.get_pose_arm()
         armLog.robot_error_pos = sqrt((np.transpose(left_arm_ctrl.pos_error)*left_arm_ctrl.pos_error)[0,0])

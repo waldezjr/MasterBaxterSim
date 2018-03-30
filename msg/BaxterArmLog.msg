@@ -1,4 +1,5 @@
-float64 robot_error
+float64 robot_error_pos
+float64 robot_error_orient
 float64[] joints_conf
 float64[] joints_speed
 geometry_msgs/Vector3 f_ext

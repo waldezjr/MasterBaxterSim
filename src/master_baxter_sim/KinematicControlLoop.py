@@ -49,16 +49,6 @@ class KinematicControlLoop:
         self.pub_joint_cmd = rospy.Publisher('/robot/limb/' + self.limb_name 
             +'/joint_command', JointCommand, queue_size=1)
 
-        
-        self.tfBuffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.tfBuffer)
-
-        #subcriber to get torque measurements
-        # rospy.Subscriber('/robot/limb/' + self.limb_name + '/endpoint_state', EndpointState, self.endeffector_callback)
-        rospy.Subscriber('/ft_sensor/' + self.limb_name, WrenchStamped, self.force_sensor_callback)
-        # /robot/limb/left/gravity_compensation_torques
-
-
         self.command_msg = JointCommand()
         self.command_msg.mode = JointCommand.POSITION_MODE
 
@@ -107,26 +97,6 @@ class KinematicControlLoop:
         )[:3]
         v1 = v1*len
         return v1
-
-    def force_sensor_callback(self, data):
-
-        if self.limb == 'left':
-            # self.tfBuffer.waitForTransform('base','left_wrist', rospy.Time(0), rospy.Duration(1.0))
-            eef_transformation = self.tfBuffer.lookup_transform('base','left_wrist', rospy.Time(0))
-        else:
-            # self.tfBuffer.waitForTransform('base','right_wrist', rospy.Time(0), rospy.Duration(1.0))            
-            eef_transformation = self.tfBuffer.lookup_transform('base','right_wrist', rospy.Time(0))
-
-        force_measured = data.wrench.force
-
-        # print '\nforce at sensor frame', force_measured
-
-        force_measured = self.qv_mult(force_measured,eef_transformation.transform.rotation)
-
-        self.force_measured = Vector3(force_measured[0],force_measured[1],force_measured[2])
-
-        # print '\nforce at base frame', self.force_measured
-        
 
     def init_arm(self, init_q):
         
