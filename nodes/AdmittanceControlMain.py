@@ -54,7 +54,7 @@ def human_traj(t,x_c,tSim):
     return x_d
 
 def main(bag):
-    rospy.init_node('KinematicControlNode')
+    rospy.init_node('AdmittanceControlNode')
 
     # Wait for clock time (when simulating in Gazebo)
     while rospy.get_time() == 0 :
@@ -68,6 +68,9 @@ def main(bag):
 
     q_initial = [-0.2662, -0.7219, -0.9775, 1.2290, 0.6837, 1.3972, -0.3970]
 
+    # Initialize arm
+    left_arm_ctrl.init_arm(q_initial)
+    left_arm_adm = AdmittanceControlLoop("left")
 
     t = 0
     t_ros_cur = -1.0
@@ -78,8 +81,6 @@ def main(bag):
     #Orientation: x, y, z, w ---> vec, scalar
     orient_ref = np.matrix([0.0,1.0,0.0,0.0])
 
-    # Initialize arm
-    left_arm_ctrl.init_arm(q_initial)
 
     # set loop frequency (Hz)
     rate = rospy.Rate(20) 
@@ -100,14 +101,16 @@ def main(bag):
         t = t+deltaT
 
         print t
-        # print '\n angles:', left_arm_ctrl.get_angles_arm()
         # get reference trajectories
-        # x_ref_right,x_ref_dot_right,x_ref_dot_dot_right = circular_traj(t,x_c_right,30,-1)
-        x_ref_left,x_ref_dot_left,x_ref_dot_dot_left = circular_traj(t,x_c_left,30)
+        x_r_left,x_r_dot_left,x_r_dot_dot_left = circular_traj(t,x_c_left,30)
+        x_h = human_traj(t,x_c_left,30)
 
-        # step through control for both arms
-        # right_arm_ctrl.run(x_ref_right,x_ref_dot_right,orient_ref)
-        left_arm_ctrl.run(x_ref_left,x_ref_dot_left,orient_ref)
+        # step through admittance controller
+         # def run(self, x_r, x_r_dot,x_r_dot_dot,x_current_dot,x_h):
+        left_arm_adm.run(x_r_left,x_r_dot_left,x_r_dot_dot_left,left_arm_ctrl.x_dot,x_h)
+
+        # step through kinematic controller
+        left_arm_ctrl.run(np.transpose(left_arm_adm.x_ref),np.transpose(left_arm_adm.x_ref_dot),orient_ref)
 
         # save data in bag
         

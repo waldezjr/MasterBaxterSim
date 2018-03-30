@@ -69,8 +69,6 @@ class KinematicControlLoop:
 
         #Current Pose
 
-        self.end_effector_position = self.limb.endpoint_pose()['position']
-        self.end_effector_orient = self.limb.endpoint_pose()['orientation']
 
         self.kin.print_kdl_chain()
         # print 'ik BAXTER pykdl', self.kin.inverse_kinematics([0.5,-0.2,0.3])
@@ -80,6 +78,7 @@ class KinematicControlLoop:
         # REMEMBER TO TEST THIS TO BE SURE PYKDL IS USING DEG INSTEAD OF RAD
         # print self.kin.forward_position_kinematics([4.14,-42.12,-31.31,-24.30,6.25,-54.51,46.99])
         self.force_measured = Vector3()
+        self.x_dot = np.transpose(np.matrix([0.0,0.0,0.0]))
 
     def rotate_list(self,l, n):
         return l[n:] + l[:n]
@@ -126,6 +125,8 @@ class KinematicControlLoop:
             j_a['left_w1']= init_q[5]
             j_a['left_w2']= init_q[6]
         self.limb.move_to_joint_positions(j_a)
+        self.end_effector_position = self.limb.endpoint_pose()['position']
+        self.end_effector_orient = self.limb.endpoint_pose()['orientation']
 
     def get_angles_arm(self):
         q_aux = self.limb.joint_angles()
