@@ -33,23 +33,28 @@ def human_traj(t,x_c,tSim):
     r = 0.05 #radius
 
     x_d = np.matrix([0.0,0.0,0.0])
-    p1 = circular_traj(t_delta,x_c,tSim)
+    p1, aux1, aux2 = circular_traj(t_delta,x_c,tSim)
     p2 = np.matrix([x_c[0], x_c[1] + 3*r/2, x_c[2]])
-    p3 = circular_traj(t_delta,x_c,3*tSim)
-    p4 = circular_traj(t_delta,x_c,5*tSim)
+    p3, aux1, aux2 = circular_traj(t_delta,x_c,3*tSim)
+    p4, aux1, aux2 = circular_traj(t_delta,x_c,5*tSim)
 
     if t < t_delta:
-        x_d = circular_traj(t,x_c,tSim)
+        x_d, x_d_dot, x_d_dot_dot = circular_traj(t,x_c,tSim)
+
     elif t >= t_delta and t < 2*t_delta:
         x_d = (t-t_delta) * (p2-p1)/1.25 + p1;
+
     elif t >= 2*t_delta and t < 3*t_delta:
         x_d = (t-2*t_delta) * (p3-p2)/1.25 + p2;
+
     elif t >= 3*t_delta and t < 5*t_delta:
         x_d = (t-3*t_delta) * (p4-p3)/2.5 + p3;
+
     elif t >= 5*t_delta and t < tSim:
-        x_d = circular_traj(t,x_c,tSim)
+        x_d, x_d_dot, x_d_dot_dot = circular_traj(t,x_c,tSim)
+
     elif t>= tSim:
-        x_d = circular_traj(0,x_c,tSim)
+        x_d, x_d_dot, x_d_dot_dot = circular_traj(0,x_c,tSim)
 
     return x_d
 
@@ -102,26 +107,29 @@ def main(bag):
 
         print t
         # get reference trajectories
-        x_r_left,x_r_dot_left,x_r_dot_dot_left = circular_traj(t,x_c_left,30)
-        x_h = human_traj(t,x_c_left,30)
+        x_r_left,x_r_dot_left,x_r_dot_dot_left = circular_traj(0,x_c_left,30)
+        x_r_dot_left = np.matrix([0.0,0.0,0.0])
+        x_r_dot_dot_left = np.matrix([0.0,0.0,0.0])
+        x_h = human_traj(0,x_c_left,30)
+        # print 'human_traj', x_h
 
         # step through admittance controller
-         # def run(self, x_r, x_r_dot,x_r_dot_dot,x_current_dot,x_h):
+        
         left_arm_adm.run(x_r_left,x_r_dot_left,x_r_dot_dot_left,left_arm_ctrl.x_dot,x_h)
 
         # step through kinematic controller
-        left_arm_ctrl.run(np.transpose(left_arm_adm.x_ref),np.transpose(left_arm_adm.x_ref_dot),orient_ref)
+        left_arm_ctrl.run(np.transpose(left_arm_adm.x_ref),np.transpose(left_arm_adm.x_ref_dot),x_orient)
 
         # save data in bag
         
-        pos, ori = left_arm_ctrl.get_pose_arm()
-        armLog.robot_error_pos = sqrt((np.transpose(left_arm_ctrl.pos_error)*left_arm_ctrl.pos_error)[0,0])
-        armLog.robot_error_orient = sqrt((np.transpose(left_arm_ctrl.orient_error)*left_arm_ctrl.orient_error)[0,0])
-        armLog.EEF_pos.x = pos[0]
-        armLog.EEF_pos.y = pos[1]
-        armLog.EEF_pos.z = pos[2]
-        armLog.f_ext = left_arm_ctrl.force_measured
-        bag.write('left_arm_log',armLog)
+        # pos, ori = left_arm_ctrl.get_pose_arm()
+        # armLog.robot_error_pos = sqrt((np.transpose(left_arm_ctrl.pos_error)*left_arm_ctrl.pos_error)[0,0])
+        # armLog.robot_error_orient = sqrt((np.transpose(left_arm_ctrl.orient_error)*left_arm_ctrl.orient_error)[0,0])
+        # armLog.EEF_pos.x = pos[0]
+        # armLog.EEF_pos.y = pos[1]
+        # armLog.EEF_pos.z = pos[2]
+        # armLog.f_ext = left_arm_ctrl.force_measured
+        # bag.write('left_arm_log',armLog)
 
 
         rate.sleep()

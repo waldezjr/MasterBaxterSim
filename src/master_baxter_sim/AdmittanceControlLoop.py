@@ -62,7 +62,7 @@ class AdmittanceControlLoop:
         self.force_measured = Vector3()
 
         # initialize kinematic reference variables
-        self.x_ref_dot = np.transpose(np.matrix([0.0,0.0]))
+        self.x_ref_dot = np.transpose(np.matrix([0.0,0.0,0.0]))
         x0 = self.limb.endpoint_pose()['position']
         self.x_ref = np.transpose(np.matrix([x0.x,x0.y,x0.z]))
         print self.x_ref
@@ -103,11 +103,18 @@ class AdmittanceControlLoop:
         # xRef = Ts*xRef_dot+ xRef;
 
         # get ref acceleration
-        self.x_ref_dot_dot = x_r_dot_dot + np.inv(self.Lambda_d)*(Fh - self.D_d*e_r_dot - self.K_d *e_r)
+        self.x_ref_dot_dot = x_r_dot_dot + np.linalg.inv(self.Lambda_d)*(Fh - self.D_d*e_r_dot - self.K_d *e_r)
+        print 'fh\n', Fh
+        print 'term1\n',-self.D_d*e_r_dot
+        print 'term2\n',-self.K_d*e_r
         # integrate to get ref velocity
         self.x_ref_dot = deltaT * self.x_ref_dot_dot + self.x_ref_dot
         # integrate to get ref position
         self.x_ref = deltaT * self.x_ref_dot + self.x_ref
+
+        # print 'self.x_ref_dot_dot\n', self.x_ref_dot_dot
+        # print 'self.x_ref_dot\n', self.x_ref_dot
+        # print 'self.x_ref\n', self.x_ref
 
     def calc_alpha(self,e_h):
         # Estimate ICC with sigmoid
@@ -136,13 +143,19 @@ class AdmittanceControlLoop:
         x_current, x_orient = self.get_pose_arm()
         #Convert EEF position to np vector
         x_current = np.matrix(x_current)
-        x_orient = np.matrix(x_orient)
+        # x_orient = np.matrix(x_orient)
         x_h = np.matrix(x_h)
 
         self.robot_error = np.transpose(np.add(x_current,-1.0*x_r))
         robot_error_dot = np.transpose(np.add(x_current_dot,-1.0*x_r_dot))
 
+        print'e_r\n', self.robot_error
+        print'e_r_dot\n', robot_error_dot
+
         self.human_error = np.transpose(np.add(x_current,-1.0*x_h))
+
+        x_r_dot_dot = np.transpose(x_r_dot_dot)
+        print'x_r_dot_dot\n', x_r_dot_dot
 
         deltaT = self.current_time - self.old_time
 
@@ -157,4 +170,6 @@ class AdmittanceControlLoop:
 
         self.K_d = self.K_d0 * (1-self.alpha) + 10*np.eye(3, dtype=float)
 
-        self.admittance(deltaT,x_r_dot_dot,self.robot_error,self.robot_error_dot,F_h)
+        # print 'x_r_dot_dot',x_r_dot 
+
+        self.admittance(deltaT,x_r_dot_dot,self.robot_error,robot_error_dot,F_h)

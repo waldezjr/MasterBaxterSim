@@ -78,7 +78,7 @@ class KinematicControlLoop:
         # REMEMBER TO TEST THIS TO BE SURE PYKDL IS USING DEG INSTEAD OF RAD
         # print self.kin.forward_position_kinematics([4.14,-42.12,-31.31,-24.30,6.25,-54.51,46.99])
         self.force_measured = Vector3()
-        self.x_dot = np.transpose(np.matrix([0.0,0.0,0.0]))
+        self.x_dot = np.matrix([0.0,0.0,0.0])
 
     def rotate_list(self,l, n):
         return l[n:] + l[:n]
@@ -106,7 +106,7 @@ class KinematicControlLoop:
 
         j_a = self.limb.joint_angles()
 
-        print j_a
+        # print j_a
 
         if(self.limb_name == 'right'):
             j_a['right_s0']= init_q[0]
@@ -170,8 +170,6 @@ class KinematicControlLoop:
         q_dot = q_dot * pi / 180 # convert q_dot to radians/s
 
         q_dot = self.saturate_q_dot(q_dot)
-
-        self.x_dot = Jp * q_dot
 
         # print 'q_dot', q_dot 
 
@@ -237,8 +235,6 @@ class KinematicControlLoop:
 
         q_dot = self.saturate_q_dot(q_dot)
         # print 'q_dot', q_dot
-
-        self.x_dot = Jp * q_dot
 
         q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_arm()))
         return q
