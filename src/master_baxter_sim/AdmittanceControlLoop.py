@@ -43,8 +43,9 @@ class AdmittanceControlLoop:
 
         #Admittance Controller Parameters
         self.Lambda_d = 2 * np.eye(3, dtype=float)
-        self.D_d = 32 * np.eye(3, dtype=float)
-        self.K_d0 = 1000 * np.eye(3, dtype=float)
+        self.D_d = 0.1 * np.eye(3, dtype=float)
+        self.K_d0 = 0.2 * np.eye(3, dtype=float)
+        # print np.linalg.inv(self.Lambda_d)
 
         # Human stiffness max
         self.K_h0 = 2000 * np.eye(3, dtype=float)
@@ -55,11 +56,10 @@ class AdmittanceControlLoop:
 
         #Current and old time parameter
         self.current_time = -1.0
-        self.old_time = 0.0
 
         #Current Pose
 
-        self.force_measured = Vector3()
+        # self.force_measured = Vector3()
 
         # initialize kinematic reference variables
         self.x_ref_dot = np.transpose(np.matrix([0.0,0.0,0.0]))
@@ -103,10 +103,10 @@ class AdmittanceControlLoop:
         # xRef = Ts*xRef_dot+ xRef;
 
         # get ref acceleration
-        self.x_ref_dot_dot = x_r_dot_dot + np.linalg.inv(self.Lambda_d)*(Fh - self.D_d*e_r_dot - self.K_d *e_r)
-        print 'fh\n', Fh
-        print 'term1\n',-self.D_d*e_r_dot
-        print 'term2\n',-self.K_d*e_r
+        self.x_ref_dot_dot = x_r_dot_dot + np.linalg.inv(self.Lambda_d)*(Fh -self.D_d*e_r_dot -self.K_d *e_r)
+        # print 'fh\n', Fh
+        # print 'term1\n',-self.D_d*e_r_dot
+        # print 'term2\n',-self.K_d*e_r
         # integrate to get ref velocity
         self.x_ref_dot = deltaT * self.x_ref_dot_dot + self.x_ref_dot
         # integrate to get ref position
@@ -114,7 +114,7 @@ class AdmittanceControlLoop:
 
         # print 'self.x_ref_dot_dot\n', self.x_ref_dot_dot
         # print 'self.x_ref_dot\n', self.x_ref_dot
-        # print 'self.x_ref\n', self.x_ref
+        print 'self.x_ref\n', self.x_ref
 
     def calc_alpha(self,e_h):
         # Estimate ICC with sigmoid
@@ -150,7 +150,7 @@ class AdmittanceControlLoop:
         robot_error_dot = np.transpose(np.add(x_current_dot,-1.0*x_r_dot))
 
         print'e_r\n', self.robot_error
-        print'e_r_dot\n', robot_error_dot
+        # print'e_r_dot\n', robot_error_dot
 
         self.human_error = np.transpose(np.add(x_current,-1.0*x_h))
 
@@ -166,9 +166,9 @@ class AdmittanceControlLoop:
         self.alpha = 0 #robot as leader
         # self.alpha = 1 #robot as follower
 
-        F_h = self.K_h0 * self.alpha * self.human_error
+        F_h = - self.K_h0 * self.alpha * self.human_error
 
-        self.K_d = self.K_d0 * (1-self.alpha) + 10*np.eye(3, dtype=float)
+        self.K_d = self.K_d0 * (1-self.alpha) #+ 10*np.eye(3, dtype=float)
 
         # print 'x_r_dot_dot',x_r_dot 
 

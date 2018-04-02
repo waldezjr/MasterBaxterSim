@@ -199,10 +199,12 @@ class KinematicControlLoop:
     def pos_orient_control(self,deltaT):
 
         x_current, x_orient = self.get_pose_arm()
+        # vel_cur = self.get_vel_arm()
 
         #Convert EEF position to numpy vector
         x_current = np.matrix(x_current)
         x_orient = np.matrix(x_orient)
+        # vel_cur = np.matrix(vel_cur)
 
         self.pos_error = np.transpose(np.add(self.x_ref,-1.0*x_current))
         # print 'pos_error', self.pos_error
@@ -213,6 +215,7 @@ class KinematicControlLoop:
 
         J = np.matrix(self.kin.jacobian())
         J_t = np.transpose(J)
+        Jp = J[0:3,:]
         # I_6 = np.matrix(np.identity(6), copy=False)
         
         # error vector
@@ -235,6 +238,10 @@ class KinematicControlLoop:
 
         q_dot = self.saturate_q_dot(q_dot)
         # print 'q_dot', q_dot
+
+        self.x_dot = Jp*q_dot * pi/180
+        self.x_dot = np.transpose(self.x_dot)
+        print 'vel', self.x_dot
 
         q = deltaT * q_dot + np.transpose(np.matrix(self.get_angles_arm()))
         return q
@@ -270,12 +277,12 @@ class KinematicControlLoop:
         self.x_dot_ref = x_dot_ref
 
         if orient_ref != None:
-            print '\n Controlling EEF position + orientation \n'
+            # print '\n Controlling EEF position + orientation \n'
             self.orient_ref = orient_ref
             q = self.pos_orient_control(deltaT)
 
         else:
-            print '\n Controlling EEF position \n'
+            # print '\n Controlling EEF position \n'
             q = self.pos_control(deltaT)
         
         if self.verbose:

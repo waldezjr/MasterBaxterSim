@@ -161,7 +161,7 @@ include_directories(
 install(PROGRAMS
    nodes/jointPositionPublisherExample.py
    nodes/KinematicControlMain.py
-   nodes/ImpedanceControlMain.py
+   nodes/AdmittanceControlMain.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 
