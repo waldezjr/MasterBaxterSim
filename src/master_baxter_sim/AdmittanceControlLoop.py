@@ -94,7 +94,7 @@ class AdmittanceControlLoop:
         # orient: x,y,z,w ---> vec,scalar
         return pos,orientation
 
-    def admittance(self, deltaT, x_r_dot_dot, x_r_dot, x_r, Fh):
+    def admittance(self, deltaT, x_r_dot_dot, x_r_dot, x_r):
         
 
 #       xRef_dot_dot = xRDotDot + inv(Md)*( Fh -D*(xRef_dot - xRDot ) - Kd*(xRef - xR) );
@@ -106,7 +106,7 @@ class AdmittanceControlLoop:
         error_ref = self.x_ref - x_r
 
         # get ref acceleration
-        self.x_ref_dot_dot = x_r_dot_dot + np.linalg.inv(self.Lambda_d)*(Fh -self.D_d*error_ref_dot -self.K_d *error_ref)
+        self.x_ref_dot_dot = x_r_dot_dot + np.linalg.inv(self.Lambda_d)*(self.F_h -self.D_d*error_ref_dot -self.K_d *error_ref)
         # integrate to get ref velocity
         self.x_ref_dot = deltaT * self.x_ref_dot_dot + self.x_ref_dot
         # integrate to get ref position
@@ -122,7 +122,7 @@ class AdmittanceControlLoop:
 
         # calculate norm(e_h)
         norm_e_h = sqrt((np.transpose(e_h)*e_h)[0,0])
-        icc = (self.icc_MAX - self.icc_min)*1/(1+exp(-(600*norm_e_h-6))) + self.icc_min
+        icc = (self.icc_MAX - self.icc_min)*1/(1+exp(-(1000*norm_e_h-6))) + self.icc_min
 
         self.alpha = (icc - self.icc_min) / (self.icc_MAX - self.icc_min);
 
@@ -136,9 +136,11 @@ class AdmittanceControlLoop:
         if self.current_time == -1.0:
             self.current_time = rospy.get_time()
             self.old_time = self.current_time
+            self.K_d_old = 0
         else:
             self.old_time = self.current_time
             self.current_time = rospy.get_time()
+
 
         x_current, x_orient = self.get_pose_arm()
         #Convert EEF position to np vector
@@ -164,19 +166,33 @@ class AdmittanceControlLoop:
         # Ideally, we should obtain the external force from a F/T sensor or estimate it from the joint torques
         # However, for simulation purposes we use a virtual human force modelled as a spring
 
-        # self.calc_alpha(self.human_error)
-        self.alpha = 0 #robot as leader
+        self.calc_alpha(self.human_error)
+        # self.alpha = 0 #robot as leader
         # self.alpha = 1 #robot as follower
         # self.alpha = 0.5 #mixed
 
-        F_h = - self.K_h0 * self.alpha * self.human_error
-        print 'force', F_h
+        self.F_h = - self.K_h0 * self.alpha * self.human_error
+        # print 'force', self.F_h
 
         # if t>30/8  and t<30/2:
         #     F_h = np.transpose(np.matrix([0.0,10.0,0.0]))
 
-        self.K_d = self.K_d0 * (1-self.alpha) # + 10*np.eye(3, dtype=float)
+        self.K_d = self.K_d0 * (1-self.alpha) + 10*np.eye(3, dtype=float)
+
+        #get stability condition functions
+        gamma = 17 #CHANGE THIS LATER!
+
+        K_d_der = (self.K_d[0,0] - self.K_d_old) / deltaT
+
+        self.K_d_old = self.K_d[0,0]
+        
+
+
+        self.f1 =2*gamma*self.K_d[0,0]
+
+        self.f2 = K_d_der
+
 
         # print 'x_r_dot_dot',x_r_dot 
 
-        self.admittance(deltaT,x_r_dot_dot,x_r_dot,x_r,F_h)
+        self.admittance(deltaT,x_r_dot_dot,x_r_dot,x_r)

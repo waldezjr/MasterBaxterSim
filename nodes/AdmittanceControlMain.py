@@ -122,16 +122,40 @@ def main(bag):
         left_arm_ctrl.run(np.transpose(left_arm_adm.x_ref),np.transpose(left_arm_adm.x_ref_dot))
         # left_arm_ctrl.run(x_h,x_r_dot_left)
 
-        # save data in bag
+        #Organize data for bag
+
+        e_h = sqrt((np.transpose(left_arm_adm.human_error)*left_arm_adm.human_error)[0,0])
+        e_r = sqrt((np.transpose(left_arm_adm.robot_error)*left_arm_adm.robot_error)[0,0])
+        pos, ori = left_arm_ctrl.get_pose_arm()
+        alpha = left_arm_adm.alpha
+        # print 'alpha', alpha
+        # print ori
         
-        # pos, ori = left_arm_ctrl.get_pose_arm()
-        # armLog.robot_error_pos = sqrt((np.transpose(left_arm_ctrl.pos_error)*left_arm_ctrl.pos_error)[0,0])
-        # armLog.robot_error_orient = sqrt((np.transpose(left_arm_ctrl.orient_error)*left_arm_ctrl.orient_error)[0,0])
-        # armLog.EEF_pos.x = pos[0]
-        # armLog.EEF_pos.y = pos[1]
-        # armLog.EEF_pos.z = pos[2]
-        # armLog.f_ext = left_arm_ctrl.force_measured
-        # bag.write('left_arm_log',armLog)
+
+        # save data in bag
+
+        armLog.human_error_pos = e_h
+        armLog.robot_error_pos = e_r
+
+        armLog.EEF_pos.x = pos[0]
+        armLog.EEF_pos.y = pos[1]
+        armLog.EEF_pos.z = pos[2]
+
+        armLog.EEF_orientation.x = ori[0]
+        armLog.EEF_orientation.y = ori[1]
+        armLog.EEF_orientation.z = ori[2]
+        armLog.EEF_orientation.w = ori[3]
+
+        armLog.f_ext.x = left_arm_adm.F_h[0,0]
+        armLog.f_ext.y = left_arm_adm.F_h[1,0]
+        armLog.f_ext.z = left_arm_adm.F_h[2,0]
+
+        armLog.f1 = left_arm_adm.f1
+        armLog.f2 = left_arm_adm.f2
+
+        armLog.alpha = alpha
+
+        bag.write('left_arm_log',armLog)
 
         # break
         rate.sleep()
