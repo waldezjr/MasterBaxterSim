@@ -44,11 +44,11 @@ class AdmittanceControlLoop:
         #Admittance Controller Parameters
         self.Lambda_d = 2 * np.eye(3, dtype=float)
         self.D_d = 32 * np.eye(3, dtype=float)
-        self.K_d0 = 1000 * np.eye(3, dtype=float)
+        self.K_d0 = 800 * np.eye(3, dtype=float)
         # print np.linalg.inv(self.Lambda_d)
 
         # Human stiffness max
-        self.K_h0 = 2000 * np.eye(3, dtype=float)
+        self.K_h0 = 200 * np.eye(3, dtype=float)
 
         #Max and min values for ICC simulation
         self.icc_MAX = 0.5
@@ -114,7 +114,7 @@ class AdmittanceControlLoop:
 
         # print 'self.x_ref_dot_dot\n', self.x_ref_dot_dot
         # print 'self.x_ref_dot\n', self.x_ref_dot
-        print 'self.x_ref\n', self.x_ref
+        # print 'self.x_ref\n', self.x_ref
 
     def calc_alpha(self,e_h):
         # Estimate ICC with sigmoid
@@ -152,9 +152,10 @@ class AdmittanceControlLoop:
         # print'e_r_dot\n', robot_error_dot
 
         self.human_error = np.transpose(np.add(x_current,-1.0*x_h))
+        print'e_h\n', self.human_error
 
         x_r_dot_dot = np.transpose(x_r_dot_dot)
-        print'x_r_dot_dot\n', x_r_dot_dot
+        # print'x_r_dot_dot\n', x_r_dot_dot
         x_r_dot = np.transpose(x_r_dot)
         x_r = np.transpose(x_r)
 
@@ -166,13 +167,15 @@ class AdmittanceControlLoop:
         # self.calc_alpha(self.human_error)
         self.alpha = 0 #robot as leader
         # self.alpha = 1 #robot as follower
+        # self.alpha = 0.5 #mixed
 
         F_h = - self.K_h0 * self.alpha * self.human_error
+        print 'force', F_h
 
-        if t>30/8  and t<30/2:
-            F_h = np.transpose(np.matrix([0.0,10.0,0.0]))
+        # if t>30/8  and t<30/2:
+        #     F_h = np.transpose(np.matrix([0.0,10.0,0.0]))
 
-        self.K_d = self.K_d0 * (1-self.alpha) #+ 10*np.eye(3, dtype=float)
+        self.K_d = self.K_d0 * (1-self.alpha) # + 10*np.eye(3, dtype=float)
 
         # print 'x_r_dot_dot',x_r_dot 
 
