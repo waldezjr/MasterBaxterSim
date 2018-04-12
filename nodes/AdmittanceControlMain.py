@@ -29,14 +29,20 @@ def circular_traj(t,x_c,tSim, mirror=1):
     return x_ref, x_ref_dot,x_ref_dot_dot
 
 def human_traj(t,x_c,tSim):
+    # TODO: VERIFY THIS TRAJECTORY
     t_delta = tSim/8
     r = 0.05 #radius
 
     x_d = np.matrix([0.0,0.0,0.0])
     p1, aux1, aux2 = circular_traj(t_delta,x_c,tSim)
     p2 = np.matrix([x_c[0], x_c[1] + 3*r/2, x_c[2]])
-    p3, aux1, aux2 = circular_traj(t_delta,x_c,3*tSim)
-    p4, aux1, aux2 = circular_traj(t_delta,x_c,5*tSim)
+    p3, aux1, aux2 = circular_traj(3*t_delta,x_c,tSim)
+    p4, aux1, aux2 = circular_traj(5*t_delta,x_c,tSim)
+
+    # print 'p1', p1
+    # print 'p2', p2
+    # print 'p3', p3
+    # print 'p4', p4
 
     if t < t_delta:
         x_d, x_d_dot, x_d_dot_dot = circular_traj(t,x_c,tSim)
@@ -53,7 +59,7 @@ def human_traj(t,x_c,tSim):
     elif t >= 5*t_delta and t < tSim:
         x_d, x_d_dot, x_d_dot_dot = circular_traj(t,x_c,tSim)
 
-    elif t>= tSim:
+    else:
         x_d, x_d_dot, x_d_dot_dot = circular_traj(0,x_c,tSim)
 
     return x_d
@@ -107,18 +113,19 @@ def main(bag):
 
         print t
         # get reference trajectories
-        x_r_left,x_r_dot_left,x_r_dot_dot_left = circular_traj(5,x_c_left,30)
+        x_r_left,x_r_dot_left,x_r_dot_dot_left = circular_traj(t,x_c_left,30)
         x_r_dot_left = np.matrix([0.0,0.0,0.0])
         x_r_dot_dot_left = np.matrix([0.0,0.0,0.0])
-        x_h = human_traj(0,x_c_left,30)
+        x_h = human_traj(t,x_c_left,30)
         # print 'human_traj', x_h
 
         # step through admittance controller
         
-        left_arm_adm.run(x_r_left,x_r_dot_left,x_r_dot_dot_left,left_arm_ctrl.x_dot,x_h)
+        left_arm_adm.run(x_r_left,x_r_dot_left,x_r_dot_dot_left,x_h,t)
 
         # step through kinematic controller
-        left_arm_ctrl.run(np.transpose(left_arm_adm.x_ref),np.transpose(left_arm_adm.x_ref_dot),orient_ref)
+        left_arm_ctrl.run(np.transpose(left_arm_adm.x_ref),np.transpose(left_arm_adm.x_ref_dot))
+        # left_arm_ctrl.run(x_r_left,x_r_dot_left)
 
         # save data in bag
         

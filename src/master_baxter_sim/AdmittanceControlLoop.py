@@ -43,8 +43,8 @@ class AdmittanceControlLoop:
 
         #Admittance Controller Parameters
         self.Lambda_d = 2 * np.eye(3, dtype=float)
-        self.D_d = 0.1 * np.eye(3, dtype=float)
-        self.K_d0 = 0.2 * np.eye(3, dtype=float)
+        self.D_d = 32 * np.eye(3, dtype=float)
+        self.K_d0 = 1000 * np.eye(3, dtype=float)
         # print np.linalg.inv(self.Lambda_d)
 
         # Human stiffness max
@@ -94,19 +94,19 @@ class AdmittanceControlLoop:
         # orient: x,y,z,w ---> vec,scalar
         return pos,orientation
 
-    def admittance(self, deltaT, x_r_dot_dot, e_r, e_r_dot, Fh):
+    def admittance(self, deltaT, x_r_dot_dot, x_r_dot, x_r, Fh):
         
 
-        # xRef_dot_dot = xRDotDot + inv(Md)*( Fh -D*(xEDot - xRDot ) - Kd*(xE - xR) );
-        # %integrate xRef_dot_dot, and xRef_dot
-        # xRef_dot = Ts * xRef_dot_dot + xRef_dot;
-        # xRef = Ts*xRef_dot+ xRef;
+#       xRef_dot_dot = xRDotDot + inv(Md)*( Fh -D*(xRef_dot - xRDot ) - Kd*(xRef - xR) );
+#         %integrate xRef_dot_dot, and xRef_dot
+#       xRef_dot = Ts * xRef_dot_dot + xRef_dot;
+#       xRef = Ts*xRef_dot+ xRef;
+
+        error_ref_dot = self.x_ref_dot - x_r_dot
+        error_ref = self.x_ref - x_r
 
         # get ref acceleration
-        self.x_ref_dot_dot = x_r_dot_dot + np.linalg.inv(self.Lambda_d)*(Fh -self.D_d*e_r_dot -self.K_d *e_r)
-        # print 'fh\n', Fh
-        # print 'term1\n',-self.D_d*e_r_dot
-        # print 'term2\n',-self.K_d*e_r
+        self.x_ref_dot_dot = x_r_dot_dot + np.linalg.inv(self.Lambda_d)*(Fh -self.D_d*error_ref_dot -self.K_d *error_ref)
         # integrate to get ref velocity
         self.x_ref_dot = deltaT * self.x_ref_dot_dot + self.x_ref_dot
         # integrate to get ref position
@@ -129,7 +129,7 @@ class AdmittanceControlLoop:
 
 
     #Execute one control step
-    def run(self, x_r, x_r_dot,x_r_dot_dot,x_current_dot,x_h):
+    def run(self, x_r, x_r_dot,x_r_dot_dot, x_h,t):
 
 
         #get current time
@@ -147,7 +147,6 @@ class AdmittanceControlLoop:
         x_h = np.matrix(x_h)
 
         self.robot_error = np.transpose(np.add(x_current,-1.0*x_r))
-        robot_error_dot = np.transpose(np.add(x_current_dot,-1.0*x_r_dot))
 
         print'e_r\n', self.robot_error
         # print'e_r_dot\n', robot_error_dot
@@ -156,6 +155,8 @@ class AdmittanceControlLoop:
 
         x_r_dot_dot = np.transpose(x_r_dot_dot)
         print'x_r_dot_dot\n', x_r_dot_dot
+        x_r_dot = np.transpose(x_r_dot)
+        x_r = np.transpose(x_r)
 
         deltaT = self.current_time - self.old_time
 
@@ -168,8 +169,11 @@ class AdmittanceControlLoop:
 
         F_h = - self.K_h0 * self.alpha * self.human_error
 
+        if t>30/8  and t<30/2:
+            F_h = np.transpose(np.matrix([0.0,10.0,0.0]))
+
         self.K_d = self.K_d0 * (1-self.alpha) #+ 10*np.eye(3, dtype=float)
 
         # print 'x_r_dot_dot',x_r_dot 
 
-        self.admittance(deltaT,x_r_dot_dot,self.robot_error,robot_error_dot,F_h)
+        self.admittance(deltaT,x_r_dot_dot,x_r_dot,x_r,F_h)
