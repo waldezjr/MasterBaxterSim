@@ -42,13 +42,13 @@ class AdmittanceControlLoop:
 
 
         #Admittance Controller Parameters
-        self.Lambda_d = 2 * np.eye(3, dtype=float)
-        self.D_d = 32 * np.eye(3, dtype=float)
+        self.Lambda_d = 6 * np.eye(3, dtype=float)
+        self.D_d = 200 * np.eye(3, dtype=float)
         self.K_d0 = 800 * np.eye(3, dtype=float)
         # print np.linalg.inv(self.Lambda_d)
 
         # Human stiffness max
-        self.K_h0 = 200 * np.eye(3, dtype=float)
+        self.K_h0 = 400 * np.eye(3, dtype=float)
 
         #Max and min values for ICC simulation
         self.icc_MAX = 0.5
@@ -122,7 +122,7 @@ class AdmittanceControlLoop:
 
         # calculate norm(e_h)
         norm_e_h = sqrt((np.transpose(e_h)*e_h)[0,0])
-        icc = (self.icc_MAX - self.icc_min)*1/(1+exp(-(1000*norm_e_h-6))) + self.icc_min
+        icc = (self.icc_MAX - self.icc_min)*1/(1+exp(-(2000*norm_e_h-6))) + self.icc_min
 
         self.alpha = (icc - self.icc_min) / (self.icc_MAX - self.icc_min);
 
