@@ -54,8 +54,8 @@ def human_traj(t,x_c,tSim):
 x_c = [0.7,0.25,0.15]
 
 
-# folder_str = os.getcwd() + '/src/MasterBaxterSim/nodes/Bags/'
-folder_str = os.getcwd() + '/src/master_baxter_sim/nodes/Bags/'
+folder_str = os.getcwd() + '/src/MasterBaxterSim/nodes/Bags/'
+# folder_str = os.getcwd() + '/src/master_baxter_sim/nodes/Bags/'
 
 t0 = float(-1)
 time_vec0 = []
@@ -104,7 +104,9 @@ x_h_y =[]
 
 
 
-bag = rosbag.Bag(folder_str + 'new_alpha0.bag')
+# bag = rosbag.Bag(folder_str + 'new_alpha0.bag')
+bag = rosbag.Bag(folder_str + 'Kinematic_Control_Bag_08-05_07:59:21.bag')
+
 for topic, msg, t in bag.read_messages(topics=['left_arm_log']):
     #get initial t
     if t0==-1:
@@ -166,7 +168,8 @@ for topic, msg, t in bag.read_messages(topics=['left_arm_log']):
 bag.close()
 t0=-1
 
-bag = rosbag.Bag(folder_str + 'new_alpha_adapt.bag')
+# bag = rosbag.Bag(folder_str + 'new_alpha_adapt.bag')
+bag = rosbag.Bag(folder_str + 'damping135.bag')
 for topic, msg, t in bag.read_messages(topics=['left_arm_log']):
     #get initial t
     if t0==-1:

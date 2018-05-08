@@ -43,7 +43,7 @@ class AdmittanceControlLoop:
 
         #Admittance Controller Parameters
         self.Lambda_d = 6 * np.eye(3, dtype=float)
-        self.D_d = 200 * np.eye(3, dtype=float)
+        self.D_d = 135 * np.eye(3, dtype=float)
         self.K_d0 = 800 * np.eye(3, dtype=float)
         # print np.linalg.inv(self.Lambda_d)
 
@@ -178,6 +178,7 @@ class AdmittanceControlLoop:
         #     F_h = np.transpose(np.matrix([0.0,10.0,0.0]))
 
         self.K_d = self.K_d0 * (1-self.alpha) + 10*np.eye(3, dtype=float)
+        self.D_d = 1.5 * 2 * sqrt(self.K_d[1][1] * self.Lambda_d[1][1])
 
         #get stability condition functions
         gamma = 17 #CHANGE THIS LATER!
