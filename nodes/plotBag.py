@@ -54,7 +54,8 @@ def human_traj(t,x_c,tSim):
 x_c = [0.7,0.25,0.15]
 
 
-folder_str = os.getcwd() + '/src/MasterBaxterSim/nodes/Bags/'
+# folder_str = os.getcwd() + '/src/MasterBaxterSim/nodes/Bags/'
+folder_str = os.getcwd() + '/src/master_baxter_sim/nodes/Bags/'
 
 t0 = float(-1)
 time_vec0 = []
@@ -189,29 +190,33 @@ bag.close()
 
 line_wdt = 3
 plt.rc('font', family='serif')
+plt.rcParams.update({'font.size': 30})
 # plot trajectories
-plt.figure(1)
+plt.figure(1,figsize=(14,10))
 
-plt.plot(x_x0,x_y0, label = r'$\alpha$= 0', lw = line_wdt)#, x_x05,x_y05,x_x1,x_y1,x_x_a,x_y_a, aa=True)
-plt.plot(x_x05,x_y05, label = r'$\alpha$= 0.5', lw = line_wdt)
-plt.plot(x_x1,x_y1, label = r'$\alpha$= 1',  lw =line_wdt)
-plt.plot(x_x_a,x_y_a, label = r'$\alpha$' + ' adaptive', lw =line_wdt)
+# plt.plot(x_x0,x_y0, label = r'$\alpha$= 0', lw = line_wdt)#, x_x05,x_y05,x_x1,x_y1,x_x_a,x_y_a, aa=True)
+# plt.plot(x_x05,x_y05, label = r'$\alpha$= 0.5', lw = line_wdt)
+# plt.plot(x_x1,x_y1, label = r'$\alpha$= 1',  lw =line_wdt)
 plt.plot(x_h_x,x_h_y, label = r'$x_h(t)$', lw =line_wdt)
 plt.plot(x_r_x,x_r_y, label = r'$x_r(t)$', lw =line_wdt)
+# plt.plot(x_x_a,x_y_a, label = r'$\alpha$' + ' adaptive', lw =line_wdt)
+plt.plot(x_x_a,x_y_a, label = r'$x_e(t)$', lw =line_wdt)
 # print x_h_x
 plt.axis([0.63, 0.76, 0.18, 0.34])
 plt.title('Trajectories X-Y')
-plt.xlabel('x (m)')
-plt.ylabel('y (m)')
+plt.xlabel(r'$x_b$ (m)')
+plt.ylabel(r'$y_b$ (m)')
 plt.legend(loc =4)
 
+
 # plot alpha
-plt.figure(2)
+plt.figure(2,figsize=(14,10))
 plt.plot(time_vec_a,alpha,lw = line_wdt, label = r'$\alpha(t)$')
-plt.title(r'$\alpha(t)$  X  Time')
+# plt.title(r'$\alpha(t)$ ')
 plt.xlabel('time (s)')
 plt.ylabel(r'$\alpha$')
 plt.legend()
+plt.axis([0, 45, -.1, 1.1])
 
 # plot errors alpha 0
 plt.figure(3)
@@ -241,12 +246,12 @@ plt.title(r'Error Norms ($\alpha=1$) ')
 plt.legend()
 
 # plot errors alpha adaptive
-plt.figure(6)
-plt.plot(time_vec_a,e_h_a,lw = line_wdt, label = r'$\parallel e_h(t) \parallel $')
-plt.plot(time_vec_a,e_r_a,lw = line_wdt, label = r'$\parallel e_r(t) \parallel $')
+plt.figure(6,figsize=(14,10))
+plt.plot(time_vec_a,e_h_a,lw = line_wdt, label = r'$\parallel e_h(t)\parallel $')
+plt.plot(time_vec_a,e_r_a,lw = line_wdt, label = r'$\parallel e_r(t)\parallel $')
 plt.xlabel('time (s)')
 plt.ylabel('norm (m)')
-plt.title(r'Error Norms ($\alpha$ adaptive) ')
+plt.title(r'Error Norms ')
 plt.legend()
 
 # external force x
